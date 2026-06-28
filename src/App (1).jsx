@@ -746,7 +746,7 @@ const TODAY_SLOW = [
   { t:2, k:"Утро", v:"Чай в тишине", url:IMG.moonMilk, d:{ lead:"Начни день с чашки чая у окна, без телефона.", s:[{t:"Как сделать", n:["Завари чай не спеша.","Сядь у окна, посмотри на свет.","Подыши пару минут в тишине."]}], tip:"Десять тихих минут задают тон дню." }},
   { t:3, k:"Книга", v:"Страницы о тишине", heroUrl:IMG.puzzle, d:{ lead:"Вечером — пара страниц о медленной жизни.", s:[{t:"Как читать", p:"Тёплый свет, чай, телефон в другой комнате."}], tip:"Читай по чуть-чуть, без цели дочитать." }},
   { t:5, k:"Воздух", v:"Медленная прогулка", heroUrl:IMG.poolText, d:{ lead:"Прогулка в парке без наушников — медитация в движении.", s:[{t:"Как сделать", n:["Иди медленно, без цели.","Слушай звуки, а не подкаст.","Трогай листья, дыши глубоко."]}], tip:"Лес и парк лечат самим присутствием." }},
-  { t:0, k:"Образ", v:"Вязаный свитер и носки", d:{ lead:"Уют как стиль: тёплая вязка и натуральные тона.", s:[{t:"Как носить", p:"Крупная вязка + льняные брюки + тёплые носки."}], tip:"Тёплые нейтральные тона смотрятся дорого." }},
+  { t:0, k:"Образ", v:"Вязаный свитер и носки", heroUrl:IMG.capsuleHangers, d:{ lead:"Уют как стиль: тёплая вязка и натуральные тона.", s:[{t:"Как носить", p:"Крупная вязка + льняные брюки + тёплые носки."}], tip:"Тёплые нейтральные тона смотрятся дорого." }},
   { t:4, k:"Вкус", v:"Овсянка с яблоком", heroUrl:IMG.butter, d:{ lead:"Тёплый уютный завтрак с корицей.", s:[{t:"Как собрать", n:["Свари овсянку на медленном огне.","Потоми яблоко с корицей.","Полей мёдом, добавь орехи."]}], tip:"Тёплая еда утром согревает весь день." }},
   { t:1, k:"Вечер", v:"Час без экрана", url:IMG.greekSunset, d:{ lead:"Заверши день тишиной и тёплым светом.", s:[{t:"Как сделать", p:"Убери телефон, зажги свечу, побудь в тишине."}], tip:"Бумажная книга — лучший офлайн." }},
 ,
@@ -2456,7 +2456,7 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
       <div style={{ marginTop:12, marginBottom:26 }}>
         {items.map((it,i)=>(
           <button key={i} onClick={()=>setDetail({ item:it, partner:ch.partner })} style={{ width:"100%", textAlign:"left", border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", gap:14, padding:"12px 0", borderBottom:`1px solid ${C.line}` }}>
-            <div style={{ width:54, flexShrink:0 }}><Photo t={it.t} url={it.url} h={54} radius={12}/></div>
+            <div style={{ width:54, flexShrink:0 }}><Photo t={it.t} url={it.url||it.heroUrl} h={54} radius={12}/></div>
             <div style={{ flex:1 }}><Label>{it.k}</Label><div style={{ fontFamily:serif, fontSize:18, color:C.ink, marginTop:1, lineHeight:1.2 }}>{it.v}</div></div>
             <ArrowRight size={17} strokeWidth={1.6} color={C.inkFaint}/>
           </button>
@@ -3465,7 +3465,7 @@ function RubricView({ data, onClose, setDetail }) {
       </div>
       {items.map((it,i)=>(
         <button key={i} onClick={()=>setDetail({ item:it, partner:data.partner, recipe:!!data.recipe })} className="fade" style={{ width:"100%", textAlign:"left", border:"none", background:"transparent", cursor:"pointer", display:"flex", gap:14, padding:"14px 0", borderBottom: i<items.length-1?`1px solid ${C.line}`:"none" }}>
-          <div style={{ width:74, flexShrink:0 }}><Photo t={it.t} url={it.url} h={74} radius={12}/></div>
+          <div style={{ width:74, flexShrink:0 }}><Photo t={it.t} url={it.url||it.heroUrl} h={74} radius={12}/></div>
           <div style={{ flex:1 }}>
             <Label>{it.k}</Label>
             <div style={{ fontFamily:serif, fontSize:18, color:C.ink, margin:"2px 0 4px", lineHeight:1.2 }}>{it.v}</div>
