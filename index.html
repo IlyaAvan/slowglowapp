@@ -1,18 +1,27 @@
 <!doctype html>
 <html lang="ru">
-  <head> <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Slow Glow</title>
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>Slow Glow — живи красиво</title>
     <meta name="theme-color" content="#FAF8F1" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Slow Glow" />
-    <script>window.SG_AI_ENDPOINT = "ВСТАВЬ_АДРЕС_ФУНКЦИИ_СЮДА";</script>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192-v2.png" />
+    <link rel="icon" type="image/png" href="/icon-192-v2.png" />
+    <style>html,body,#root{height:100%;margin:0;background:#FAF8F1}</style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script src="/register-sw.js" defer></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/service-worker.js").catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

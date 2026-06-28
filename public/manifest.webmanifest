@@ -1,12 +1,17 @@
 {
-  "name": "Slow Glow",
+  "name": "Slow Glow — живи красиво",
   "short_name": "Slow Glow",
-  "start_url": "/",
+  "description": "Эстетика медленной красивой жизни: ритуалы, рубрики, путешествия и вдохновение.",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#FAF8F1",
-  "theme_color": "#FAF8F1",
+  "theme_color": "#E78A72",
+  "lang": "ru",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "icon-192-v2.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
