@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Home, MapPin, Plus, User, Search, Heart, ChevronDown, ArrowRight, ArrowLeft, X, Send, Clock, Users, Wind, ExternalLink, Play, Download, Sparkles, Check, BookOpen } from "lucide-react";
+import { LANG_WEEK_EXTRA } from "./lang_weeks.js";
 
 const C = {
   butter:"#F6E7A6", oat:"#F3EFE4", sage:"#D7DEC9", seaMist:"#CBD6DE", sand:"#E8E2D6", ink:"#1A1A1A",
@@ -607,7 +608,7 @@ const IMG = {
 
 const head = "'Satoshi','Inter',-apple-system,sans-serif";
 const serif = "'Instrument Serif', Georgia, serif";
-const body = "'Inter', sans-serif";
+const body = "'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 /* ── Ежедневная ротация: seedToday меняется каждый день; sgRefreshDay() пересчитывает «сегодня» (вызывается при возврате в приложение и в полночь) ── */
 const sgDaySeed = () => Math.floor(Date.now()/86400000);
@@ -2012,12 +2013,8 @@ function SlowGlowAppMain() {
   const ch = CHAPTERS[chapterId];
 
   useEffect(() => {
-    const g = document.createElement("link"); g.rel="stylesheet";
-    g.href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap";
-    document.head.appendChild(g);
-    const f = document.createElement("link"); f.rel="stylesheet";
-    f.href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500&display=swap";
-    document.head.appendChild(f);
+    // Шрифты подключены локально через @font-face в index.html (public/fonts/).
+    // Никаких загрузок с Google Fonts / Fontshare — приложение открывается в РФ без VPN.
   }, []);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tab]);
 
@@ -5675,15 +5672,53 @@ function PetsView({ ch, onClose, pet }) {
 }
 
 // ── LANGUAGES ─────────────────────────────────────────────────────
-function wordsFor(th, lvl){
+// Банки лексики по уровням на каждый язык (статически, не зависят от ИИ).
+// mid — изысканная лексика уровня B2–C1 (Средний); adv — редкая/книжная/идиоматичная C1–C2 (Продвинутый).
+// Тематически в духе медленной красивой жизни, чтобы подходить к любой теме урока.
+const LANG_VOCAB = {
+  "Французский": {
+    mid: [["flâner","гулять без цели, фланировать"],["la quiétude","безмятежность, покой"],["s'attarder","медлить, задерживаться"],["chaleureux","тёплый, радушный"],["le crépuscule","сумерки"],["savourer","смаковать, наслаждаться"],["feutré","приглушённый, мягкий"],["l'écrin","уютное обрамление; шкатулка"]],
+    adv: [["la sérénité","безмятежность"],["ineffable","невыразимый"],["se languir","томиться, тосковать"],["le clair-obscur","светотень"],["entêtant","дурманящий, навязчивый (об аромате)"],["l'oisiveté","праздность"],["chatoyant","переливчатый, искрящийся"],["le ravissement","упоение, восхищение"]],
+  },
+  "Английский": {
+    mid: [["to linger","медлить, задерживаться"],["serene","безмятежный"],["to savour","смаковать"],["cosy","уютный"],["dusk","сумерки"],["unhurried","неспешный"],["mellow","мягкий, тёплый (о свете)"],["a respite","передышка"]],
+    adv: [["quietude","безмятежность, тишина"],["ineffable","невыразимый"],["to meander","блуждать, петлять"],["sumptuous","роскошный"],["wistful","тоскливо-задумчивый"],["idleness","праздность"],["luminous","лучезарный, светящийся"],["reverie","грёзы, мечтательность"]],
+  },
+  "Итальянский": {
+    mid: [["indugiare","медлить, задерживаться"],["la quiete","покой, тишина"],["assaporare","смаковать"],["accogliente","уютный, гостеприимный"],["il crepuscolo","сумерки"],["pacato","спокойный, размеренный"],["soffuso","рассеянный, мягкий (о свете)"],["la lentezza","медлительность"]],
+    adv: [["la serenità","безмятежность"],["ineffabile","невыразимый"],["struggersi","томиться, тосковать"],["il chiaroscuro","светотень"],["inebriante","опьяняющий, дурманящий"],["l'ozio","праздность, досуг"],["cangiante","переливчатый"],["il rapimento","упоение, восторг"]],
+  },
+  "Испанский": {
+    mid: [["demorarse","медлить, задерживаться"],["el sosiego","покой, безмятежность"],["saborear","смаковать"],["acogedor","уютный"],["el crepúsculo","сумерки"],["pausado","неспешный, размеренный"],["tenue","мягкий, приглушённый (о свете)"],["la calma","спокойствие"]],
+    adv: [["la serenidad","безмятежность"],["inefable","невыразимый"],["añorar","тосковать, скучать"],["el claroscuro","светотень"],["embriagador","опьяняющий, дурманящий"],["el ocio","досуг, праздность"],["tornasolado","переливчатый"],["el arrobamiento","упоение, восхищение"]],
+  },
+};
+function _dedupWords(arr){ const seen=new Set(); const out=[]; for(const w of arr){ if(!w||!w[0]||!w[1]) continue; const k=String(w[0]).toLowerCase().trim(); if(seen.has(k)) continue; seen.add(k); out.push(w); } return out; }
+// Полная неделя тем на язык: день 1 — флагманская тема (themed), дни 2–7 — из LANG_WEEK_EXTRA.
+// Темы сменяются по дням (ротация по seedToday), на всех языках, и весь контент уже на месте.
+function langWeekPool(s){
+  if (!s) return null;
+  if (s.journeys) return s.journeys;
+  if (s.week) return s.week;
+  const extra = LANG_WEEK_EXTRA[s.n] || [];
+  return s.themed ? [s.themed].concat(extra) : (extra.length ? extra : null);
+}
+
+function wordsFor(th, lvl, lang){
   if (th && th.wl && th.wl[lvl]) return th.wl[lvl];
   const ws = ((th&&th.words)||[]).filter(w=>w&&w[0]&&w[1]);
-  // Продвинутый: все слова + продвинутая лексика (wlAdv), если есть
-  if (lvl==="Продвинутый") return (th && th.wlAdv && th.wlAdv.length) ? ws.concat(th.wlAdv) : ws;
-  if (ws.length < 5) return ws;
-  const byLen = [...ws].sort((a,b)=> String(a[0]).length - String(b[0]).length);
-  if (lvl==="Начальный") return byLen.slice(0,5);
-  return ws; // Средний — все базовые слова
+  const bank = LANG_VOCAB[lang] || { mid:[], adv:[] };
+  if (lvl==="Начальный"){
+    if (ws.length < 5) return ws;
+    const byLen = [...ws].sort((a,b)=> String(a[0]).length - String(b[0]).length);
+    return byLen.slice(0,5); // самые простые слова темы
+  }
+  if (lvl==="Продвинутый"){
+    const adv = (th && th.wlAdv && th.wlAdv.length) ? th.wlAdv : [];
+    return _dedupWords(ws.concat(adv).concat(bank.adv||[])).slice(0,16); // тема + продвинутая лексика
+  }
+  // Средний — слова темы + изысканная лексика уровня
+  return _dedupWords(ws.concat(bank.mid||[])).slice(0,14);
 }
 // Чтение по уровню: Начальный — короче и проще, Средний — полный текст,
 // Продвинутый — полный текст + продвинутый абзац (readAdv) с изысканной лексикой.
@@ -5788,7 +5823,7 @@ function LangView({ ch, premium, onClose, openPlus }) {
   const [ltShowRu, setLtShowRu] = useState(false);
   useEffect(() => {
     if (!lesson || !sel) { setLongText(null); return; }
-    const _pool = (sel.journeys || sel.week); const day = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
+    const _pool = langWeekPool(sel); const day = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
     if (!day) return;
     let cancelled = false; setLongText(null); setLtBusy(true); setLtShowRu(false);
     (async () => {
@@ -5796,12 +5831,12 @@ function LangView({ ch, premium, onClose, openPlus }) {
         const sys = `Ты — преподаватель ${sel.n.toLowerCase()} языка и автор эстетичных познавательных текстов в духе медленной красивой жизни (lifestyle Kinfolk, искусство, культура, ритуалы).`;
         const lvlDesc = {"Начальный":"A2–B1 (живые, не примитивные предложения, постепенно усложняющиеся)","Средний":"B2–C1 (богатая, изысканная и небанальная лексика, идиомы, сложные конструкции)","Продвинутый":"C1–C2 (виртуозная литературная лексика, редкие слова, идиомы, тонкие оттенки смысла и сложный синтаксис)"}[lvl] || lvl.toLowerCase();
         const lenByLvl = {"Начальный":"не меньше 2500 знаков (примерно 400–500 слов), 8–10 полных абзацев","Средний":"не меньше 3200 знаков (примерно 550–650 слов), 10–13 полных абзацев","Продвинутый":"не меньше 4200 знаков (примерно 750–900 слов), 13–16 полных абзацев"}[lvl] || "не меньше 3200 знаков, 10–13 полных абзацев";
-        const prompt = `Напиши связный, насыщенный познавательный текст на ${sel.n.toLowerCase()} языке на тему «${day.theme}», уровень ${lvlDesc}. ОБЪЁМ ОБЯЗАТЕЛЬНО ${lenByLvl}; не сокращай и не обрывай текст, доведи каждую мысль до конца. Сложность лексики и синтаксиса должна СТРОГО соответствовать уровню: чем выше уровень, тем реже, изысканнее и точнее слова и тем сложнее конструкции. Пиши на уровне образованного носителя — со сложным синтаксисом, развёрнутыми периодами, причастными и деепричастными оборотами и редкой книжной лексикой. Тёплый, образный и эрудированный: с конкретными деталями, фактами, культурными и историческими отсылками и живой атмосферой. Сознательно используй богатую, изысканную и небанальную лексику, точные синонимы, идиомы и устойчивые выражения; варьируй конструкции и длину предложений — чтобы читатель встречал интересные и сложные новые слова, но текст всё же оставался по силам его уровню. Не упрощай: там, где уместно, вводи более редкую, книжную и точную лексику, профессиональные и культурные термины, поясняя их через контекст. Избегай примитива, канцелярита, штампов и повторов. Затем дай полный, точный и литературный перевод на русский (тоже целиком, без сокращений). Верни ТОЛЬКО JSON без markdown, без обрезанных строк: {"text":"текст на ${sel.n.toLowerCase()} языке с абзацами через \\n\\n","translation":"перевод на русский с абзацами через \\n\\n"}.`;
+        const prompt = `Напиши связный, насыщенный познавательный текст на ${sel.n.toLowerCase()} языке на тему «${day.theme}», уровень ${lvlDesc}. ОБЪЁМ ОБЯЗАТЕЛЬНО ${lenByLvl}; не сокращай и не обрывай текст, доведи каждую мысль до конца. Сложность лексики и синтаксиса должна СТРОГО соответствовать уровню: чем выше уровень, тем реже, изысканнее и точнее слова и тем сложнее конструкции. Пиши на уровне образованного носителя — со сложным синтаксисом, развёрнутыми периодами, причастными и деепричастными оборотами и редкой книжной лексикой. Тёплый, образный и эрудированный: с конкретными деталями, фактами, культурными и историческими отсылками и живой атмосферой. Сознательно используй богатую, изысканную и небанальную лексику, точные синонимы, идиомы и устойчивые выражения; варьируй конструкции и длину предложений — чтобы читатель встречал интересные и сложные новые слова, но текст всё же оставался по силам его уровню. Не упрощай: там, где уместно, вводи более редкую, книжную и точную лексику, профессиональные и культурные термины, поясняя их через контекст. Избегай примитива, канцелярита, штампов и повторов. Затем дай полный, точный и литературный перевод на русский (тоже целиком, без сокращений). Также подбери 10–12 ключевых слов и выражений ИЗ САМОГО ТЕКСТА — самых небанальных и полезных, со сложностью СТРОГО по уровню (на Начальном — простые, но живые; на Среднем — изысканная лексика B2–C1; на Продвинутом — редкие, книжные и идиоматические выражения C1–C2), каждое с точным переводом на русский. Верни ТОЛЬКО JSON без markdown, без обрезанных строк: {"text":"текст на ${sel.n.toLowerCase()} языке с абзацами через \\n\\n","translation":"перевод на русский с абзацами через \\n\\n","words":[["слово или выражение на ${sel.n.toLowerCase()} языке","перевод на русский"]]}.`;
         const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:8000, system:sys, messages:[{ role:"user", content:prompt }] }) });
         const d = await r.json();
         let raw = (d.content||[]).filter(x=>x.type==="text").map(x=>x.text).join("").trim();
         const obj = sgParseJSON(raw);
-        if (obj) { if (obj.text) obj.text = stripMd(obj.text); if (obj.translation) obj.translation = stripMd(obj.translation); }
+        if (obj) { if (obj.text) obj.text = stripMd(obj.text); if (obj.translation) obj.translation = stripMd(obj.translation); obj.words = Array.isArray(obj.words) ? obj.words.filter(wd=>Array.isArray(wd)&&wd[0]&&wd[1]).map(wd=>[stripMd(String(wd[0])).trim(), stripMd(String(wd[1])).trim()]).filter(wd=>wd[0]&&wd[1]).slice(0,14) : null; }
         if (!cancelled && obj && obj.text) setLongText(obj);
       } catch(e) { if(!cancelled) setLongText(null); }
       if (!cancelled) setLtBusy(false);
@@ -5892,15 +5927,18 @@ function LangView({ ch, premium, onClose, openPlus }) {
   };
   if (sel && lesson) {
     const tier = "themed";
-    const w = sel.wk1; const _pool = (sel.journeys || sel.week); const th = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
+    const w = sel.wk1; const _pool = langWeekPool(sel); const th = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
     const rd = readFor(th, lvl);
+    // Слова под уровень: если ИИ сгенерил лексику дня (она строго по уровню) — берём её,
+    // иначе откатываемся на статический список темы.
+    const lvlWords = (longText && longText.words && longText.words.length) ? longText.words : wordsFor(th, lvl, sel.n);
     const jStamp = (th && th.city) ? { ru:th.city, lat:th.lat, icon:th.icon, g:th.g } : LANG_STAMP[sel.n];
     const escH = (x) => String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const savePdf = () => {
       const isBasic = tier==="basic";
       const pdfTitle = isBasic ? "Приветствия и кафе" : (th.theme || "Carnet дня");
       const reads = isBasic ? w.greet.map(g=>[g[0],g[1]]) : rd;
-      const wordsArr = isBasic ? w.words : (th.words||[]);
+      const wordsArr = isBasic ? w.words : lvlWords;
       const st = jStamp || LANG_STAMP[sel.n] || { ru:"Slow Glow", lat:"SLOW GLOW", icon:"skyline", g:2 };
       const sg = _CITY_GRAD[st.g] || _CITY_GRAD[0];
       const stIcon = _CITY_ICN[st.icon] || _CITY_ICN.skyline;
@@ -5995,7 +6033,7 @@ function LangView({ ch, premium, onClose, openPlus }) {
             </div>
             <Label>Слова · уровень {lvl.toLowerCase()}</Label>
             <div style={{ display:"flex", flexWrap:"wrap", gap:7, margin:"10px 0 20px" }}>
-              {wordsFor(th, lvl).map(wd=><span key={wd[0]} style={{ fontSize:13.5, color:C.ink, background:C.sage, padding:"6px 12px", borderRadius:99 }}><b style={{ fontWeight:600 }}>{wd[0]}</b> — {wd[1]}</span>)}
+              {lvlWords.map(wd=><span key={wd[0]} style={{ fontSize:13.5, color:C.ink, background:C.sage, padding:"6px 12px", borderRadius:99 }}><b style={{ fontWeight:600 }}>{wd[0]}</b> — {wd[1]}</span>)}
             </div>
             <Label>Грамматика</Label>
             <div style={{ margin:"10px 0 20px", background:"rgba(255,255,255,0.55)", border:`1px solid ${C.line}`, borderRadius:14, padding:"13px 15px" }}>
@@ -6009,7 +6047,7 @@ function LangView({ ch, premium, onClose, openPlus }) {
               </div>
               <p style={{ fontSize:13.5, lineHeight:1.6, color:C.ink, margin:0, whiteSpace:"pre-line" }}>{th.grammar}</p>
             </div>
-            <WordTest key={sel.n+"-"+lessonDay+"-"+lvl} words={wordsFor(th, lvl)} partner={ch.partner} stamp={jStamp} />
+            <WordTest key={sel.n+"-"+lessonDay+"-"+lvl} words={lvlWords} partner={ch.partner} stamp={jStamp} />
           </>
         )}
         {tier==="basic" ? (
@@ -6116,10 +6154,10 @@ function LangView({ ch, premium, onClose, openPlus }) {
         <Label color={C.inkFaint}>Журнал · Неделя 1 · уровень {lvl.toLowerCase()}</Label>
         <div style={{ marginTop:10 }}>
           {[1,2,3,4,5,6,7].map(w=>{
-            const _p = (sel.journeys || sel.week); const avail = !!_p || w===1;
+            const _p = langWeekPool(sel); const avail = !!_p || w===1;
             return (
             <button key={w} onClick={()=>{ if(!avail) return; if(!premium){ openPlus(); return; } setLessonDay(w); setLesson(true); }} style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", justifyContent:"space-between", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.55)", borderRadius:14, padding:"12px 15px", marginBottom:9, cursor:avail?"pointer":"default" }}>
-              <div><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink }}>День {w}</div><div style={{ fontSize:12, color:C.inkFaint, marginTop:1 }}>{(()=>{ const p=(sel.journeys||sel.week); return p ? p[(((seedToday+w-1)%p.length)+p.length)%p.length].theme : WEEK_THEMES[w-1]; })()}</div></div>
+              <div><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink }}>День {w}</div><div style={{ fontSize:12, color:C.inkFaint, marginTop:1 }}>{(()=>{ const p=langWeekPool(sel); return p ? p[(((seedToday+w-1)%p.length)+p.length)%p.length].theme : WEEK_THEMES[w-1]; })()}</div></div>
               {avail ? <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:10, letterSpacing:"0.08em", color:premium?ch.partner:C.inkFaint }}>{premium?"открыть урок":"в Plus"} <ArrowRight size={13} strokeWidth={2}/></span>
                 : <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.08em", color:C.inkFaint }}>СКОРО</span>}
             </button>

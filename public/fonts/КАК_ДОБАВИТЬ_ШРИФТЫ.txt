@@ -1,0 +1,29 @@
+ЛОКАЛЬНЫЕ ШРИФТЫ — чтобы вид был точь-в-точь, без загрузки из-за рубежа.
+
+Приложение уже подключает шрифты отсюда (см. @font-face в index.html).
+Положи в эту папку (public/fonts/) файлы РОВНО с такими именами, в формате .woff2:
+
+  Satoshi-Light.woff2
+  Satoshi-Regular.woff2
+  Satoshi-Medium.woff2
+  InstrumentSerif-Regular.woff2
+  InstrumentSerif-Italic.woff2
+  Inter-Regular.woff2
+  Inter-Medium.woff2
+  Caveat-Medium.woff2
+
+Где взять (скачать один раз, можно с VPN — это только для скачивания файлов,
+само приложение потом работает без VPN):
+  • Satoshi          — fontshare.com (бесплатно)
+  • Instrument Serif — fonts.google.com (бесплатно, лицензия OFL)
+  • Inter            — fonts.google.com или rsms.me/inter (OFL)
+  • Caveat           — fonts.google.com (OFL)
+
+Удобный способ получить готовые .woff2 + правильные имена: gwfh.mranftl.com
+(google-webfonts-helper) — выбираешь шрифт, формат woff2, скачиваешь.
+
+ВАЖНО:
+  • имена файлов должны совпадать точно (регистр важен);
+  • формат именно .woff2;
+  • пока файлов нет — приложение НЕ ломается: подставляется системный шрифт
+    (Georgia для заголовков-курсива, системный без засечек для текста).
