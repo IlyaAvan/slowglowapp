@@ -1286,6 +1286,35 @@ async function wikiImg(query, lang = "ru") {
     return src;
   } catch (e) { _wikiCache[key] = null; return lang !== "en" ? wikiImg(query, "en") : null; }
 }
+// Уменьшает и сжимает выбранное пользователем фото перед сохранением:
+// большие снимки с телефона (3–8 МБ) превращаются в лёгкий JPEG (~100–250 КБ),
+// который помещается в хранилище и быстро грузится. Без этого большое фото
+// переполняет localStorage и место/момент не сохраняется.
+function shrinkImage(file, maxDim, quality){
+  return new Promise((resolve)=>{
+    const fallback = ()=>{ try{ const fr=new FileReader(); fr.onload=()=>resolve(String(fr.result||"")); fr.onerror=()=>resolve(""); fr.readAsDataURL(file); }catch(_){ resolve(""); } };
+    try{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = ()=>{
+        try{
+          let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if (!w || !h){ try{ URL.revokeObjectURL(url); }catch(_){} return fallback(); }
+          const m = maxDim || 1280;
+          if (w > m || h > m){ const s = m/Math.max(w,h); w = Math.round(w*s); h = Math.round(h*s); }
+          const c = document.createElement("canvas"); c.width = w; c.height = h;
+          c.getContext("2d").drawImage(img, 0, 0, w, h);
+          const out = c.toDataURL("image/jpeg", quality || 0.82);
+          try{ URL.revokeObjectURL(url); }catch(_){}
+          resolve(out && out.length > 24 ? out : ""); 
+        }catch(err){ try{ URL.revokeObjectURL(url); }catch(_){} fallback(); }
+      };
+      img.onerror = ()=>{ try{ URL.revokeObjectURL(url); }catch(_){} fallback(); };
+      img.src = url;
+    }catch(err){ fallback(); }
+  });
+}
+
 function Photo({ t = 0, url, q, qlang, h, radius = 14, fb, style, children, icon }) {
   const [src, setSrc] = useState(url || fb || null);
   const [failed, setFailed] = useState(false);
@@ -1301,7 +1330,7 @@ function Photo({ t = 0, url, q, qlang, h, radius = 14, fb, style, children, icon
     <div style={{ position:"relative", height:h, borderRadius:radius, overflow:"hidden",
       background:PH[((t%PH.length)+PH.length)%PH.length], boxShadow:"0 14px 30px -22px rgba(26,26,26,0.4)", ...style }}>
       {!showDeco ?
-        <img src={src} alt="" className="fade" onError={()=>{ if (fb && src !== fb) { setSrc(fb); } else { setFailed(true); } }} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/> :
+        <img src={src} alt="" className="fade" loading="lazy" decoding="async" onError={()=>{ if (fb && src !== fb) { setSrc(fb); } else { setFailed(true); } }} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/> :
         <img src={decoArt(t, icon)} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>}
       {children}
     </div>
@@ -2005,7 +2034,6 @@ function SlowGlowAppMain() {
 
   const capture = (e) => {
     const f = (e.target.files||[])[0]; if (!f) return;
-    let url = ""; try { url = URL.createObjectURL(f); } catch(_){}
     const id = Date.now();
     const h = new Date().getHours();
     const pool = h<11 ? ["Тёплое утро","Медленное утро","Свет нового дня","Утренний кадр"]
@@ -2013,7 +2041,9 @@ function SlowGlowAppMain() {
               : h<22 ? ["Тёплый вечер","Уютный вечер","Мягкий свет вечера","Вечерний момент"]
               :        ["Тихая ночь","Поздний кадр","Спокойствие ночи","Момент перед сном"];
     const cap = pool[id % pool.length];
-    setMoments(m=>[{ id, url, cap, date:"только что" }, ...m]);
+    shrinkImage(f, 1280, 0.82)
+      .then(url=>{ setMoments(m=>[{ id, url, cap, date:"только что" }, ...m]); })
+      .catch(()=>{ setMoments(m=>[{ id, url:"", cap, date:"только что" }, ...m]); });
     setCelebrate(true); setTimeout(()=>setCelebrate(false), 2200); setTab("journal");
   };
 
@@ -2275,7 +2305,7 @@ function Onboarding({ profile, setProfile, onDone }) {
     const to = setTimeout(()=>setStep(7), 2900);
     return ()=>{ clearInterval(iv); clearTimeout(to); };
   }, [step]);
-  const onFiles = (e) => { const fs = Array.from(e.target.files||[]); fs.forEach(f=>{ const r=new FileReader(); r.onload=()=>{ setPins(p=>[...p,{ url:r.result }]); setExamples(false); }; r.readAsDataURL(f); }); };
+  const onFiles = (e) => { const fs = Array.from(e.target.files||[]); fs.forEach(f=>{ shrinkImage(f,1280,0.82).then(url=>{ if(url){ setPins(p=>[...p,{ url }]); setExamples(false); } }); }); };
   const partner = CHAPTERS[pickId].partner;
   const collage = pins.length>0 ? pins : [3,1,4,2,0,5].map(t=>({ t }));
   const canNext =
@@ -2305,7 +2335,7 @@ function Onboarding({ profile, setProfile, onDone }) {
             </button>
             {pins.length===0 && !examples && <button onClick={()=>setExamples(true)} style={{ display:"block", margin:"0 auto 8px", border:"none", background:"transparent", color:C.inkSoft, fontSize:13, textDecoration:"underline", cursor:"pointer", fontFamily:body }}>Показать на примере</button>}
             <div style={{ columnCount:2, columnGap:10, marginTop:10 }}>
-              {!examples && pins.map((p,i)=><div key={i} className="col-in" style={{ width:"100%", marginBottom:10, breakInside:"avoid", borderRadius:16, overflow:"hidden", boxShadow:"0 14px 30px -20px rgba(26,26,26,0.4)", animationDelay:`${i*0.08}s` }}><img src={p.url} alt="" style={{ width:"100%", display:"block" }}/></div>)}
+              {!examples && pins.map((p,i)=><div key={i} className="col-in" style={{ width:"100%", marginBottom:10, breakInside:"avoid", borderRadius:16, overflow:"hidden", boxShadow:"0 14px 30px -20px rgba(26,26,26,0.4)", animationDelay:`${i*0.08}s` }}><img src={p.url} alt="" loading="lazy" decoding="async" style={{ width:"100%", display:"block" }}/></div>)}
               {examples && [3,1,4,2,0,5].map((t,i)=><div key={i} className="col-in" style={{ width:"100%", marginBottom:10, breakInside:"avoid", height:[140,110,126,140,112,132][i], borderRadius:16, background:PH[t], boxShadow:"0 14px 30px -20px rgba(26,26,26,0.4)", animationDelay:`${i*0.08}s` }}/>)}
             </div>
           </div>
@@ -2395,7 +2425,7 @@ function Onboarding({ profile, setProfile, onDone }) {
                     <div className={col===0?"mq-up":"mq-down"} style={{ display:"flex", flexDirection:"column", gap:10 }}>
                       {loop.map((p,i)=>(
                         <div key={i} style={{ width:"100%", borderRadius:16, overflow:"hidden", boxShadow:"0 16px 34px -22px rgba(26,26,26,0.45)" }}>
-                          {p.url ? <img src={p.url} alt="" style={{ width:"100%", display:"block" }}/> : <div style={{ height:[150,112,134,150,116,138][i%6], background:PH[p.t] }}/>}
+                          {p.url ? <img src={p.url} alt="" loading="lazy" decoding="async" style={{ width:"100%", display:"block" }}/> : <div style={{ height:[150,112,134,150,116,138][i%6], background:PH[p.t] }}/>}
                         </div>
                       ))}
                     </div>
@@ -4148,7 +4178,7 @@ function AddPlace({ ch, city, editing, onClose, onSave }) {
   const [photo, setPhoto] = useState(editing?.photo || null);
   const fileRef = useRef(null);
   const TYPES = ["Кафе","Ресторан","Бар","Кофейня","Парк","Магазин","Другое"];
-  const onFile = (e) => { const f = e.target.files && e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => setPhoto(r.result); r.readAsDataURL(f); };
+  const onFile = (e) => { const f = e.target.files && e.target.files[0]; if(!f) return; shrinkImage(f,1280,0.82).then(url=>setPhoto(url)).catch(()=>{}); };
   const canSave = name.trim().length > 0;
   const save = () => { if(!canSave) return; onSave({ id:editing?.id || Date.now(), name:name.trim(), type, desc:desc.trim(), addr:addr.trim(), photo, city:city||editing?.city||"", date:editing?.date || new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long"}) }); };
   const inputStyle = { width:"100%", boxSizing:"border-box", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.7)", borderRadius:13, padding:"12px 14px", fontSize:14.5, fontFamily:body, color:C.ink, outline:"none" };
@@ -4984,7 +5014,7 @@ function StylistView({ ch, profile, wardrobe, setWardrobe, onClose }) {
   const [aiBusy, setAiBusy] = useState(false);
   const onWardrobeFiles = (e) => {
     const fs = Array.from(e.target.files||[]);
-    fs.forEach(f=>{ const r=new FileReader(); r.onload=()=>setWardrobe(prev=>[...prev,{ id:Date.now()+Math.random(), photo:r.result }]); r.readAsDataURL(f); });
+    fs.forEach(f=>{ shrinkImage(f,1024,0.82).then(url=>setWardrobe(prev=>[...prev,{ id:Date.now()+Math.random(), photo:url }])).catch(()=>{}); });
   };
   const buildLooks = async () => {
     if (!wardrobe.length || aiBusy) return;
