@@ -1,5 +1,5 @@
 // Slow Glow — service worker (network-first, чтобы новые версии не залипали)
-const CACHE = "slowglow-v3";
+const CACHE = "slowglow-v4";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", (e) => {
   self.skipWaiting();
