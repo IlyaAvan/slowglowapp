@@ -1751,13 +1751,13 @@ function sgRound(x,rx,ry,w,h,r){ x.beginPath(); x.moveTo(rx+r,ry); x.arcTo(rx+w,
 /* ── Издательский «журнальный» слой для шер-карточек 9:16 (Kinfolk):
    бумажный фон, тонкая рамка, мастхед, кикер, подпись — единый язык на все карточки.
    Дорого и сдержанно: много воздуха, serif-заголовки, тихий знак, один акцент. ── */
-function sgSpread(s){ return String(s).split("").join("\u2009"); }
+function sgSpaced(s){ return String(s).split("").join("\u2009"); }
 function sgHair(x,x1,y,x2,col,lw){ x.save(); x.strokeStyle=col||"rgba(26,26,26,0.16)"; x.lineWidth=lw||2; x.beginPath(); x.moveTo(x1,y); x.lineTo(x2,y); x.stroke(); x.restore(); }
 function sgPaper(x,W,H){ x.fillStyle=C.cream; x.fillRect(0,0,W,H); const v=x.createRadialGradient(W/2,H*0.42,H*0.18,W/2,H*0.5,H*0.78); v.addColorStop(0,"rgba(255,255,255,0)"); v.addColorStop(1,"rgba(214,205,182,0.32)"); x.fillStyle=v; x.fillRect(0,0,W,H); }
 function sgFrame(x,W,H,m){ x.save(); x.strokeStyle="rgba(26,26,26,0.15)"; x.lineWidth=2; x.strokeRect(m,m,W-2*m,H-2*m); x.restore(); }
-function sgMasthead(x,W,y){ x.save(); x.textAlign="center"; x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 26px Inter, sans-serif"; x.fillText(sgSpread("SLOW GLOW"),W/2,y); x.globalAlpha=1; x.restore(); }
-function sgKicker(x,W,text,y,accent){ x.save(); x.textAlign="center"; x.fillStyle=accent||C.ink; x.globalAlpha=accent?0.95:0.6; x.font="600 27px Inter, sans-serif"; x.fillText(sgSpread(String(text).toUpperCase()),W/2,y); x.globalAlpha=1; sgHair(x,W/2-38,y+22,W/2+38,accent||"rgba(26,26,26,0.3)",2); x.restore(); }
-function sgFooter(x,W,H,m){ const y=H-m-92; sgHair(x,m+30,y,W-m-30,"rgba(26,26,26,0.16)",2); x.save(); x.textAlign="center"; x.fillStyle=C.ink; x.globalAlpha=0.5; x.font="500 30px Inter, sans-serif"; x.fillText(sgSpread("slow-glow.app"),W/2,y+52); x.globalAlpha=0.42; x.font="italic 400 33px 'Instrument Serif', Georgia, serif"; x.fillText("заметь, что красиво",W/2,y+96); x.globalAlpha=1; x.restore(); }
+function sgMasthead(x,W,y){ x.save(); x.textAlign="center"; x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 26px Inter, sans-serif"; x.fillText(sgSpaced("SLOW GLOW"),W/2,y); x.globalAlpha=1; x.restore(); }
+function sgKicker(x,W,text,y,accent){ x.save(); x.textAlign="center"; x.fillStyle=accent||C.ink; x.globalAlpha=accent?0.95:0.6; x.font="600 27px Inter, sans-serif"; x.fillText(sgSpaced(String(text).toUpperCase()),W/2,y); x.globalAlpha=1; sgHair(x,W/2-38,y+22,W/2+38,accent||"rgba(26,26,26,0.3)",2); x.restore(); }
+function sgFooter(x,W,H,m){ const y=H-m-92; sgHair(x,m+30,y,W-m-30,"rgba(26,26,26,0.16)",2); x.save(); x.textAlign="center"; x.fillStyle=C.ink; x.globalAlpha=0.5; x.font="500 30px Inter, sans-serif"; x.fillText(sgSpaced("slow-glow.app"),W/2,y+52); x.globalAlpha=0.42; x.font="italic 400 33px 'Instrument Serif', Georgia, serif"; x.fillText("заметь, что красиво",W/2,y+96); x.globalAlpha=1; x.restore(); }
 function sgFit(x,t,maxW){ t=String(t); if(x.measureText(t).width<=maxW) return t; while(t.length>1 && x.measureText(t+"\u2026").width>maxW) t=t.slice(0,-1); return t.replace(/\s+$/,"")+"\u2026"; }
 function sgLoadImg(url){ return new Promise(res=>{ if(!url){res(null);return;} const im=new Image(); try{ if(!/^data:/.test(url)) im.crossOrigin="anonymous"; }catch(e){} im.onload=()=>res(im); im.onerror=()=>res(null); try{ im.src=url; }catch(e){ res(null); } }); }
 function sgCoverImg(x,img,dx,dy,dw,dh,r){ x.save(); sgRound(x,dx,dy,dw,dh,r||0); x.clip(); if(img){ const ir=img.width/img.height, dr=dw/dh; let sw,sh,sx,sy; if(ir>dr){ sh=img.height; sw=sh*dr; sx=(img.width-sw)/2; sy=0; } else { sw=img.width; sh=sw/dr; sx=0; sy=(img.height-sh)/2; } try{ x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh); }catch(e){} } else { const g=x.createLinearGradient(dx,dy,dx+dw,dy+dh); g.addColorStop(0,C.oat); g.addColorStop(1,C.sage); x.fillStyle=g; x.fillRect(dx,dy,dw,dh); } x.restore(); }
@@ -1852,7 +1852,7 @@ function ShareList({ ch, data }){
     if(data.sub){ x.globalAlpha=0.6; x.fillStyle=C.ink; x.font="400 32px Inter, sans-serif"; sgWrap(x, data.sub, W/2, 580, W-300, 44); x.globalAlpha=1; }
     const p=110; let y=770; x.textAlign="left";
     rows.forEach((r,i)=>{ x.fillStyle=acc; x.font="400 70px 'Instrument Serif', Georgia, serif"; x.fillText(String(i+1), p, y+6);
-      x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 25px Inter, sans-serif"; x.fillText(sgSpread(String(r[0]).toUpperCase()), p+96, y-26); x.globalAlpha=1;
+      x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 25px Inter, sans-serif"; x.fillText(sgSpaced(String(r[0]).toUpperCase()), p+96, y-26); x.globalAlpha=1;
       x.fillStyle=C.ink; x.font="400 42px 'Instrument Serif', Georgia, serif"; x.fillText(sgFit(x, r[1], W-(p+96)-70), p+96, y+32);
       y+=176; });
     x.textAlign="center"; sgFooter(x,W,H,46);
