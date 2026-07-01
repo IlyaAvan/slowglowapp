@@ -1040,6 +1040,13 @@ const RUBRICS = {
     { t:2, k:"Вдохновение", v:"Kinfolk, свежий номер", why:"Журнал о медленной жизни.", d:{ k:"Журнал", lead:"Издатель: Kinfolk (Нейтан Уильямс). Эстетский журнал о медленной жизни, доме, еде и людях. Визуальный отдых для глаз.", s:[{t:"Как читать", p:"Не залпом — пара разворотов вечером, как медитация."}], tip:"Сохраняй понравившиеся кадры в свой мудборд.", links:[["О журнале","https://www.kinfolk.com/"]] }},
     { t:1, k:"Поэзия", v:"«Цветы зла»", why:"Шарль Бодлер · поэзия Парижа.", d:{ k:"Поэзия", lead:"Автор: Шарль Бодлер. Классический сборник о красоте, городе и меланхолии — пара страниц перед сном настраивают на медленный лад.", s:[{t:"Зачем", p:"Поэзия замедляет внутренний темп лучше прозы."}], tip:"Читай вслух шёпотом — иначе звучит иначе." }},
     { t:4, k:"Нон-фикшн", v:"«В похвалу тени»", why:"Дзюнъитиро Танидзаки · эстетика.", d:{ k:"Нон-фикшн", lead:"Автор: Дзюнъитиро Танидзаки. Изящное эссе о японской эстетике тени, полумрака и сдержанной красоты — о том, почему мягкий свет красивее яркого.", s:[{t:"Идея", p:"Красота живёт в полутонах, а не в ярком свете."}], tip:"Выпиши одну мысль и проживи её на этой неделе." }},
+    { t:1, k:"Нон-фикшн", v:"«Париж в руинах»", why:"Себастьян Сми · рождение импрессионизма.", d:{ k:"Нон-фикшн · искусство", lead:"Автор: Себастьян Сми. Как импрессионизм родился среди хаоса осаждённого Парижа — история Эдуарда Мане и Берты Моризо, первой женщины-импрессионистки. Красота, рождённая из катастрофы.", s:[{t:"Кому зайдёт", p:"Если любишь Моне и хочешь понять, откуда взялся тот самый свет на картинах."}], tip:"Читай медленно, разглядывая репродукции рядом.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Париж+в+руинах+Сми"]] }},
+    { t:4, k:"Рассказы", v:"«Собиратель ракушек»", why:"Энтони Дорр · море, природа, тишина.", d:{ k:"Художественная · рассказы", lead:"Автор: Энтони Дорр — тот самый, что написал «Весь невидимый нам свет». Восемь поэтичных историй о море, природе и месте человека в ней: неторопливых и завораживающих.", s:[{t:"Кому зайдёт", p:"Если любишь тихую прозу о природе и красоту в мелочах."}], tip:"Идеально по одному рассказу за вечер.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Собиратель+ракушек+Дорр"]] }},
+    { t:5, k:"Роман", v:"«Колдовской апрель»", why:"Элизабет фон Арним · Италия и апрель.", d:{ k:"Художественная · классика", lead:"Автор: Элизабет фон Арним. Четыре очень разные англичанки снимают на апрель замок у моря в Италии — и солнце, глицинии и тишина меняют их изнутри. Светлая книга о том, как красота лечит.", s:[{t:"Кому зайдёт", p:"Если хочется сбежать в итальянскую весну, не выходя из дома."}], tip:"Лучшее чтение для начала весны.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Колдовской+апрель+Арним"]] }},
+    { t:0, k:"Роман", v:"«Элегантность ёжика»", why:"Мюриэль Барбери · красота повседневного.", d:{ k:"Художественная · современная", lead:"Автор: Мюриэль Барбери. Консьержка парижского дома прячет за простотой любовь к искусству и философии, а двенадцатилетняя девочка ищет смысл. Тонкая книга о тайной красоте обычных людей и дней.", s:[{t:"Кому зайдёт", p:"Если веришь, что красота прячется в самом незаметном."}], tip:"Выписывай понравившиеся мысли — их здесь много.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Элегантность+ёжика"]] }},
+    { t:3, k:"Роман", v:"«Стоунер»", why:"Джон Уильямс · тихая классика заново.", d:{ k:"Художественная · классика", lead:"Автор: Джон Уильямс. Негромкая история одной обычной жизни университетского преподавателя — книга, которую заново открыли спустя полвека и полюбили за честность и тишину.", s:[{t:"Кому зайдёт", p:"Если ценишь спокойную, глубокую прозу без спецэффектов."}], tip:"Не спеши — эта книга о том, что важное часто негромкое.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Стоунер+Уильямс"]] }},
+    { t:4, k:"Нон-фикшн", v:"«Книга о чае»", why:"Какудзо Окакура · эстетика простоты.", d:{ k:"Нон-фикшн · эстетика", lead:"Автор: Какудзо Окакура. Классическое эссе о чайной церемонии как искусстве жить: о простоте, внимании к моменту и красоте несовершенного.", s:[{t:"Идея", p:"Чай — это не напиток, а способ замедлиться и заметить."}], tip:"Читай с чашкой чая — иначе нельзя.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Книга+о+чае+Окакура"]] }},
+    { t:2, k:"Нон-фикшн", v:"«Ваби-саби»", why:"Леонард Корен · красота несовершенного.", d:{ k:"Нон-фикшн · эстетика", lead:"Автор: Леонард Корен. Короткая книга о японской эстетике ваби-саби — красоте простого, скромного и несовершенного. О том, почему трещинка и патина времени делают вещь живой.", s:[{t:"Что возьмёшь", b:["Ценить неидеальное","Замечать течение времени","Меньше вещей, но подлиннее"]}], tip:"Оглядись дома и найди свою «ваби-саби» деталь.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Ваби-саби+Корен"]] }},
   ]},
   recipes:{ label:"Recipes", title:"Вкус твоего сезона", partner:C.coral, salt:5, recipe:true, items:[
     { t:4, k:"Завтрак", v:"Йогурт, инжир, мёд", url:IMG.figYogurt, why:"5 минут — лето на тарелке.", time:"5 мин", serves:"1 порция", market:"Инжир: бери мягкий, тяжёлый, с капелькой сиропа на хвостике — он спелый и сладкий. Жёсткий и без аромата ещё не дозрел.", ingredients:["Греческий йогурт — 200 г","Инжир — 3 шт","Мёд — 1 ст.л.","Грецкие орехи — горсть","Корица — щепотка"], steps:["Выложи йогурт в красивую миску.","Разрежь инжир на четвертинки.","Полей мёдом, добавь орехи и корицу.","Ешь медленно, у окна."] },
@@ -1741,6 +1748,21 @@ function DailyRitual({ ch, onLive }){
 function sgWrap(x,t,cx,cy,maxW,lh){ const w=String(t).split(" "); let line="",L=[]; w.forEach(o=>{const tt=line?line+" "+o:o; if(x.measureText(tt).width>maxW&&line){L.push(line);line=o;}else line=tt;}); L.push(line); const s=cy-(L.length-1)*lh/2; L.forEach((l,i)=>x.fillText(l,cx,s+i*lh)); }
 function sgRound(x,rx,ry,w,h,r){ x.beginPath(); x.moveTo(rx+r,ry); x.arcTo(rx+w,ry,rx+w,ry+h,r); x.arcTo(rx+w,ry+h,rx,ry+h,r); x.arcTo(rx,ry+h,rx,ry,r); x.arcTo(rx,ry,rx+w,ry,r); x.closePath(); }
 
+/* ── Издательский «журнальный» слой для шер-карточек 9:16 (Kinfolk):
+   бумажный фон, тонкая рамка, мастхед, кикер, подпись — единый язык на все карточки.
+   Дорого и сдержанно: много воздуха, serif-заголовки, тихий знак, один акцент. ── */
+function sgSpread(s){ return String(s).split("").join("\u2009"); }
+function sgHair(x,x1,y,x2,col,lw){ x.save(); x.strokeStyle=col||"rgba(26,26,26,0.16)"; x.lineWidth=lw||2; x.beginPath(); x.moveTo(x1,y); x.lineTo(x2,y); x.stroke(); x.restore(); }
+function sgPaper(x,W,H){ x.fillStyle=C.cream; x.fillRect(0,0,W,H); const v=x.createRadialGradient(W/2,H*0.42,H*0.18,W/2,H*0.5,H*0.78); v.addColorStop(0,"rgba(255,255,255,0)"); v.addColorStop(1,"rgba(214,205,182,0.32)"); x.fillStyle=v; x.fillRect(0,0,W,H); }
+function sgFrame(x,W,H,m){ x.save(); x.strokeStyle="rgba(26,26,26,0.15)"; x.lineWidth=2; x.strokeRect(m,m,W-2*m,H-2*m); x.restore(); }
+function sgMasthead(x,W,y){ x.save(); x.textAlign="center"; x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 26px Inter, sans-serif"; x.fillText(sgSpread("SLOW GLOW"),W/2,y); x.globalAlpha=1; x.restore(); }
+function sgKicker(x,W,text,y,accent){ x.save(); x.textAlign="center"; x.fillStyle=accent||C.ink; x.globalAlpha=accent?0.95:0.6; x.font="600 27px Inter, sans-serif"; x.fillText(sgSpread(String(text).toUpperCase()),W/2,y); x.globalAlpha=1; sgHair(x,W/2-38,y+22,W/2+38,accent||"rgba(26,26,26,0.3)",2); x.restore(); }
+function sgFooter(x,W,H,m){ const y=H-m-92; sgHair(x,m+30,y,W-m-30,"rgba(26,26,26,0.16)",2); x.save(); x.textAlign="center"; x.fillStyle=C.ink; x.globalAlpha=0.5; x.font="500 30px Inter, sans-serif"; x.fillText(sgSpread("slow-glow.app"),W/2,y+52); x.globalAlpha=0.42; x.font="italic 400 33px 'Instrument Serif', Georgia, serif"; x.fillText("заметь, что красиво",W/2,y+96); x.globalAlpha=1; x.restore(); }
+function sgFit(x,t,maxW){ t=String(t); if(x.measureText(t).width<=maxW) return t; while(t.length>1 && x.measureText(t+"\u2026").width>maxW) t=t.slice(0,-1); return t.replace(/\s+$/,"")+"\u2026"; }
+function sgLoadImg(url){ return new Promise(res=>{ if(!url){res(null);return;} const im=new Image(); try{ if(!/^data:/.test(url)) im.crossOrigin="anonymous"; }catch(e){} im.onload=()=>res(im); im.onerror=()=>res(null); try{ im.src=url; }catch(e){ res(null); } }); }
+function sgCoverImg(x,img,dx,dy,dw,dh,r){ x.save(); sgRound(x,dx,dy,dw,dh,r||0); x.clip(); if(img){ const ir=img.width/img.height, dr=dw/dh; let sw,sh,sx,sy; if(ir>dr){ sh=img.height; sw=sh*dr; sx=(img.width-sw)/2; sy=0; } else { sw=img.width; sh=sw/dr; sx=0; sy=(img.height-sh)/2; } try{ x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh); }catch(e){} } else { const g=x.createLinearGradient(dx,dy,dx+dw,dy+dh); g.addColorStop(0,C.oat); g.addColorStop(1,C.sage); x.fillStyle=g; x.fillRect(dx,dy,dw,dh); } x.restore(); }
+function sgPills(x,W,items,y,maxW){ if(!items||!items.length) return y; x.save(); x.textAlign="center"; x.font="500 36px Inter, sans-serif"; const gap=22,padX=38,h=80; const ws=items.map(t=>Math.min(maxW||520,x.measureText(t).width)+padX*2); const tot=ws.reduce((a,b)=>a+b,0)+gap*(ws.length-1); let cx=W/2-tot/2; items.forEach((t,i)=>{ const w=ws[i]; x.strokeStyle="rgba(26,26,26,0.26)"; x.lineWidth=2; sgRound(x,cx,y,w,h,h/2); x.stroke(); x.fillStyle=C.ink; x.fillText(sgFit(x,t,(maxW||520)),cx+w/2,y+h/2+12); cx+=w+gap; }); x.restore(); return y+h; }
+
 function ShareReality({ ch, D }){
   const ref = useRef(null);
   const [busy,setBusy]=useState(false);
@@ -1748,20 +1770,15 @@ function ShareReality({ ch, D }){
   const shareText = `Моя эстетика по версии Slow Glow — «${ch.aes}»: ${keys.join(" · ")}. Узнай свою → slow-glow.app`;
   async function paint(){
     const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
-    try{ await document.fonts.load("400 64px 'Instrument Serif'"); await document.fonts.ready; }catch(e){}
-    const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,C.butter); g.addColorStop(1,ch.partner);
-    x.fillStyle=g; x.fillRect(0,0,W,H);
-    x.fillStyle="rgba(255,255,255,0.16)"; x.beginPath(); x.arc(W*0.78,H*0.2,320,0,7); x.fill();
-    x.textAlign="center"; x.fillStyle="#1A1A1A";
-    x.globalAlpha=.62; x.font="500 34px Inter, sans-serif"; x.fillText("S L O W   G L O W", W/2, 150);
-    x.font="500 30px Inter, sans-serif"; x.fillText("МОЯ ЭСТЕТИКА", W/2, 660); x.globalAlpha=1;
-    x.font="400 132px 'Instrument Serif', Georgia, serif"; sgWrap(x, ch.aes, W/2, 820, W-200, 132);
-    x.font="500 40px Inter, sans-serif";
-    const ws=keys.map(k=>x.measureText(k).width+80); const tot=ws.reduce((a,b)=>a+b,0)+36*(ws.length-1); let cx=W/2-tot/2;
-    keys.forEach((k,i)=>{ const w=ws[i]; x.fillStyle="rgba(255,255,255,0.55)"; sgRound(x,cx,1190,w,96,48); x.fill(); x.fillStyle="#1A1A1A"; x.fillText(k,cx+w/2,1250); cx+=w+36; });
-    x.globalAlpha=.85; x.font="italic 400 46px 'Instrument Serif', Georgia, serif";
-    sgWrap(x, (D.seeking&&D.seeking[0])?("ты ищешь "+String(D.seeking[0]).toLowerCase()):"ты ближе, чем кажется", W/2, 1440, W-220, 60); x.globalAlpha=1;
-    x.globalAlpha=.55; x.font="400 38px Inter, sans-serif"; x.fillText("slow-glow.app", W/2, 1810); x.globalAlpha=1;
+    try{ await document.fonts.load("400 140px 'Instrument Serif'"); await document.fonts.load("500 27px Inter"); await document.fonts.ready; }catch(e){}
+    sgPaper(x,W,H); sgFrame(x,W,H,46); x.textAlign="center";
+    sgMasthead(x,W,150);
+    sgKicker(x,W,"моя эстетика",470,ch.partner);
+    x.fillStyle=C.ink; x.font="400 138px 'Instrument Serif', Georgia, serif"; sgWrap(x, ch.aes, W/2, 700, W-260, 138);
+    if(keys.length) sgPills(x, W, keys, 990, 440);
+    x.globalAlpha=0.68; x.fillStyle=C.ink; x.font="italic 400 50px 'Instrument Serif', Georgia, serif";
+    sgWrap(x, (D.seeking&&D.seeking[0])?("ты ищешь "+String(D.seeking[0]).toLowerCase()):"ты ближе, чем кажется", W/2, 1280, W-300, 68); x.globalAlpha=1;
+    sgFooter(x,W,H,46);
   }
   async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
   function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-эстетика.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
@@ -1774,6 +1791,185 @@ function ShareReality({ ch, D }){
       <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
       <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
       <canvas ref={ref} style={{ display:"none" }}/>
+    </div>
+  );
+}
+
+/* #1 Доска мечты → коллаж-открытка 9:16 (фото пользовательницы + её эстетика) */
+function ShareBoard({ ch, imgs, D }){
+  const ref = useRef(null);
+  const [busy,setBusy]=useState(false);
+  const pics = (imgs||[]).map(o=>o&&o.url).filter(u=>u && /^data:image/.test(u)).slice(0,4);
+  const themes = (D&&D.patterns?D.patterns:[]).slice(0,3);
+  const shareText = `Моя доска мечты по версии Slow Glow — «${ch.aes}». Собери свою → slow-glow.app`;
+  async function paint(){
+    const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
+    try{ await document.fonts.load("400 96px 'Instrument Serif'"); await document.fonts.load("500 27px Inter"); await document.fonts.ready; }catch(e){}
+    const loaded = await Promise.all(pics.map(sgLoadImg));
+    sgPaper(x,W,H); sgFrame(x,W,H,46); x.textAlign="center";
+    sgMasthead(x,W,150);
+    sgKicker(x,W,"доска мечты",300,ch.partner);
+    x.fillStyle=C.ink; x.font="italic 400 92px 'Instrument Serif', Georgia, serif"; sgWrap(x, ch.aes||"моя эстетика", W/2, 430, W-280, 92);
+    const p=80, gap=26, tile=(W-2*p-gap)/2, gy=560;
+    const fbk=[[C.oat,C.sage],[C.butter,C.coral],[C.seaMist,C.lilac],[C.sand,C.camel]];
+    for(let i=0;i<4;i++){ const r=Math.floor(i/2), c=i%2, dx=p+c*(tile+gap), dy=gy+r*(tile+gap), im=loaded[i]||null;
+      if(im) sgCoverImg(x,im,dx,dy,tile,tile,26);
+      else { x.save(); sgRound(x,dx,dy,tile,tile,26); x.clip(); const g=x.createLinearGradient(dx,dy,dx+tile,dy+tile); const fb=fbk[i%4]; g.addColorStop(0,fb[0]); g.addColorStop(1,fb[1]); x.fillStyle=g; x.fillRect(dx,dy,tile,tile); x.restore(); }
+      x.save(); x.strokeStyle="rgba(26,26,26,0.10)"; x.lineWidth=2; sgRound(x,dx,dy,tile,tile,26); x.stroke(); x.restore();
+    }
+    if(themes.length){ x.globalAlpha=0.62; x.fillStyle=C.ink; x.textAlign="center"; x.font="italic 400 40px 'Instrument Serif', Georgia, serif"; sgWrap(x, themes.join("   ·   "), W/2, gy+2*tile+gap+92, W-220, 52); x.globalAlpha=1; }
+    sgFooter(x,W,H,46);
+  }
+  async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
+  function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-доска.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+  async function share(){ setBusy(true); sgTrack("share_board"); try{ const b=await blob(); const f=new File([b],"slow-glow.png",{type:"image/png"}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],text:shareText}); else dl(b); }catch(e){} setBusy(false); }
+  async function down(){ setBusy(true); try{ dl(await blob()); }catch(e){} setBusy(false); }
+  return (
+    <div style={{ borderRadius:18, padding:"15px 16px 16px", marginBottom:22, background:C.cream, border:`1px solid ${C.line}` }}>
+      <Label color={ch.partner}>Поделиться доской мечты</Label>
+      <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 12px", lineHeight:1.45 }}>Твои образы коллажем 9:16 — как разворот журнала. Друзья спросят «откуда это?».</p>
+      <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
+      <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
+      <canvas ref={ref} style={{ display:"none" }}/>
+    </div>
+  );
+}
+
+/* #4 Тихий список / коллекция → постер-список 9:16 */
+function ShareList({ ch, data }){
+  const ref = useRef(null);
+  const [busy,setBusy]=useState(false);
+  const acc = data.accent || ch.partner;
+  const rows = (data.blocks||[]).filter(b=>b && b.items && b.items.length && b.k && !b.kind).slice(0,5).map(b=>[b.k, b.items[0].v]);
+  const title = data.ru || data.title || "Коллекция";
+  const shareText = `«${title}» — коллекция-сценарий из Slow Glow. Ещё больше → slow-glow.app`;
+  async function paint(){
+    const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
+    try{ await document.fonts.load("400 96px 'Instrument Serif'"); await document.fonts.load("500 25px Inter"); await document.fonts.ready; }catch(e){}
+    sgPaper(x,W,H); sgFrame(x,W,H,46);
+    x.textAlign="center"; sgMasthead(x,W,150); sgKicker(x,W,"коллекция",300,acc);
+    x.fillStyle=C.ink; x.font="italic 400 94px 'Instrument Serif', Georgia, serif"; sgWrap(x, title, W/2, 430, W-260, 94);
+    if(data.sub){ x.globalAlpha=0.6; x.fillStyle=C.ink; x.font="400 32px Inter, sans-serif"; sgWrap(x, data.sub, W/2, 580, W-300, 44); x.globalAlpha=1; }
+    const p=110; let y=770; x.textAlign="left";
+    rows.forEach((r,i)=>{ x.fillStyle=acc; x.font="400 70px 'Instrument Serif', Georgia, serif"; x.fillText(String(i+1), p, y+6);
+      x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 25px Inter, sans-serif"; x.fillText(sgSpread(String(r[0]).toUpperCase()), p+96, y-26); x.globalAlpha=1;
+      x.fillStyle=C.ink; x.font="400 42px 'Instrument Serif', Georgia, serif"; x.fillText(sgFit(x, r[1], W-(p+96)-70), p+96, y+32);
+      y+=176; });
+    x.textAlign="center"; sgFooter(x,W,H,46);
+  }
+  async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
+  function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-коллекция.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+  async function share(){ setBusy(true); sgTrack("share_list"); try{ const b=await blob(); const f=new File([b],"slow-glow.png",{type:"image/png"}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],text:shareText}); else dl(b); }catch(e){} setBusy(false); }
+  async function down(){ setBusy(true); try{ dl(await blob()); }catch(e){} setBusy(false); }
+  return (
+    <div style={{ borderRadius:18, padding:"15px 16px 16px", margin:"6px 0 18px", background:C.cream, border:`1px solid ${C.line}` }}>
+      <Label color={acc}>Поделиться коллекцией</Label>
+      <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 12px", lineHeight:1.45 }}>Красивый постер-список 9:16 — такие сохраняют и репостят чаще всего.</p>
+      <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
+      <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
+      <canvas ref={ref} style={{ display:"none" }}/>
+    </div>
+  );
+}
+
+/* #6 Carnet → «страница дня»: фраза + перевод открыткой 9:16 */
+function ShareCarnetPage({ ch, th, rd, lang, words }){
+  const ref = useRef(null);
+  const [busy,setBusy]=useState(false);
+  const pairs = (rd||[]).filter(r=>Array.isArray(r)&&r[0]&&r[1]);
+  const hero = pairs.find(r=>String(r[0]).length>=24 && String(r[0]).length<=110) || pairs[0] || ["",""];
+  const ws = (words||[]).filter(w=>w&&w[0]).slice(0,3).map(w=>w[0]);
+  const shareText = `Учу ${String(lang).toLowerCase()} красиво — по фразе в день в Slow Glow.${(th&&th.theme)?(" Тема: «"+th.theme+"»."):""} slow-glow.app`;
+  async function paint(){
+    const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
+    try{ await document.fonts.load("400 92px 'Instrument Serif'"); await document.fonts.load("500 27px Inter"); await document.fonts.ready; }catch(e){}
+    sgPaper(x,W,H); sgFrame(x,W,H,46); x.textAlign="center";
+    sgMasthead(x,W,150);
+    sgKicker(x,W,"carnet · "+lang,320,ch.partner);
+    x.fillStyle=C.ink; x.font="italic 400 90px 'Instrument Serif', Georgia, serif"; sgWrap(x, (th&&th.theme)||"страница дня", W/2, 470, W-280, 90);
+    sgHair(x, W/2-60, 660, W/2+60, "rgba(26,26,26,0.2)", 2);
+    x.fillStyle=C.ink; x.font="400 58px 'Instrument Serif', Georgia, serif"; sgWrap(x, hero[0], W/2, 880, W-240, 72);
+    x.globalAlpha=0.62; x.font="italic 400 42px 'Instrument Serif', Georgia, serif"; sgWrap(x, hero[1], W/2, 1140, W-280, 54); x.globalAlpha=1;
+    if(ws.length) sgPills(x, W, ws, 1360, 380);
+    sgFooter(x,W,H,46);
+  }
+  async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
+  function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-carnet.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+  async function share(){ setBusy(true); sgTrack("share_carnet"); try{ const b=await blob(); const f=new File([b],"slow-glow.png",{type:"image/png"}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],text:shareText}); else dl(b); }catch(e){} setBusy(false); }
+  async function down(){ setBusy(true); try{ dl(await blob()); }catch(e){} setBusy(false); }
+  return (
+    <div style={{ borderRadius:18, padding:"15px 16px 16px", margin:"0 0 18px", background:C.cream, border:`1px solid ${C.line}` }}>
+      <Label color={ch.partner}>Поделиться страницей дня</Label>
+      <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 12px", lineHeight:1.45 }}>Фраза дня открыткой 9:16 — тихое «учу язык красиво».</p>
+      <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
+      <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
+      <canvas ref={ref} style={{ display:"none" }}/>
+    </div>
+  );
+}
+
+/* Фирменная заставка на вход: тёплый живой градиент (butter→coral→pink→sage) на весь экран,
+   мягко «дышит» и растворяется в приложении. Тап — пропустить. Уважает prefers-reduced-motion. */
+let sgIntroSeen = false;
+function SGSplash(){
+  const [gone, setGone] = useState(false);
+  const [out, setOut] = useState(false);
+  const [entered, setEntered] = useState(false);
+  useEffect(()=>{
+    let reduce=false; try{ reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+    const raf = requestAnimationFrame(()=>setEntered(true));
+    const t1 = setTimeout(()=>setOut(true), reduce?600:1650);
+    const t2 = setTimeout(()=>setGone(true), reduce?1000:2380);
+    return ()=>{ cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
+  },[]);
+  if (gone) return null;
+  const skip = ()=>{ setOut(true); setTimeout(()=>setGone(true), 460); };
+  return (
+    <div onClick={skip} style={{ position:"fixed", inset:0, zIndex:9999, overflow:"hidden", cursor:"pointer",
+      background:"linear-gradient(165deg,#F7EFD8 0%,#F4ECDE 42%,#EBE5DA 100%)",
+      opacity: out?0:1, transition:"opacity 720ms ease", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div className="amb" style={{ position:"absolute", width:"92vw", height:"92vw", left:"-18vw", top:"-12vh", borderRadius:"50%",
+        background:`radial-gradient(circle at 42% 40%, ${C.butter}, ${C.coral} 54%, rgba(246,231,166,0) 76%)`, filter:"blur(44px)", opacity:0.92 }}/>
+      <div className="amb-b" style={{ position:"absolute", width:"86vw", height:"86vw", right:"-22vw", bottom:"-14vh", borderRadius:"50%",
+        background:`radial-gradient(circle at 50% 50%, ${C.pink}, ${C.lilac} 50%, rgba(242,182,198,0) 75%)`, filter:"blur(50px)", opacity:0.85 }}/>
+      <div className="amb" style={{ position:"absolute", width:"74vw", height:"74vw", left:"18vw", bottom:"-10vh", borderRadius:"50%",
+        background:`radial-gradient(circle at 50% 50%, ${C.seaMist}, ${C.sage} 55%, rgba(203,214,222,0) 74%)`, filter:"blur(54px)", opacity:0.7 }}/>
+      <div style={{ position:"relative", textAlign:"center", padding:"0 24px", opacity: out?0:(entered?1:0), transform: out?"translateY(-16px)":(entered?"translateY(0)":"translateY(14px)"), transition:"opacity 720ms ease, transform 920ms cubic-bezier(0.16,1,0.3,1)" }}>
+        <div className="floaty" style={{ fontSize:34, color:"#fff", textShadow:"0 0 24px rgba(255,255,255,0.7)", marginBottom:8, lineHeight:1 }}>✦</div>
+        <div style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:"clamp(42px,13vw,66px)", color:C.ink, lineHeight:1 }}>Slow Glow</div>
+        <div style={{ fontFamily:head, fontSize:11, letterSpacing:"0.34em", textTransform:"uppercase", color:C.inkSoft, marginTop:14 }}>заметь, что красиво</div>
+      </div>
+    </div>
+  );
+}
+
+/* Короткая инструкция после регистрации: 3 слайда — что где смотреть. Показывается один раз. */
+function IntroTour({ partner, onDone }){
+  const [i, setI] = useState(0);
+  const slides = [
+    { kicker:"Шаг 1 · Сегодня", title:"Твой день начинается здесь", body:"Место дня, ритуалы, колонка редактора и твой спокойный путь к жизни мечты — всё на вкладке «Сегодня»." },
+    { kicker:"Шаг 2 · Досуг и карта", title:"Куда пойти под твою эстетику", body:"Карта красивых мест рядом, спорт и языки, коллекции-сценарии на вечер — на вкладке «Досуг»." },
+    { kicker:"Шаг 3 · Твоя эстетика", title:"Не понимаешь, что тебя цепляет?", body:"В разделе «Я» открой Анализатор пинов: загрузи любимые сохранения — и ИИ соберёт твою эстетику и доску мечты. Возвращайся сюда, когда меняется настроение." },
+  ];
+  const last = i === slides.length-1;
+  const s = slides[i];
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9000, background:"linear-gradient(165deg,#F7EFD8 0%,#F4ECDE 45%,#EBE5DA 100%)", display:"flex", flexDirection:"column", padding:"0 26px", boxSizing:"border-box" }}>
+      <div style={{ display:"flex", justifyContent:"flex-end", paddingTop:"calc(env(safe-area-inset-top, 0px) + 18px)" }}>
+        <button onClick={onDone} style={{ border:"none", background:"transparent", cursor:"pointer", fontFamily:head, fontSize:13, color:C.inkSoft }}>Пропустить</button>
+      </div>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center" }}>
+        <div key={i} className="fade">
+          <GlowOrb partner={partner} size={92} spark={true} style={{ margin:"0 auto 28px" }}/>
+          <div style={{ fontFamily:head, fontSize:11, letterSpacing:"0.24em", textTransform:"uppercase", color:partner, fontWeight:600, marginBottom:14 }}>{s.kicker}</div>
+          <h2 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:32, lineHeight:1.16, color:C.ink, margin:"0 0 15px", maxWidth:340 }}>{s.title}</h2>
+          <p style={{ fontSize:15.5, lineHeight:1.6, color:C.inkSoft, margin:"0 auto", maxWidth:332 }}>{s.body}</p>
+        </div>
+      </div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:18 }}>
+        {slides.map((_,k)=>(<div key={k} style={{ width:k===i?22:7, height:7, borderRadius:99, background:k===i?partner:"rgba(26,26,26,0.15)", transition:"width 240ms ease" }}/>))}
+      </div>
+      <button onClick={()=>{ last?onDone():setI(i+1); }} style={{ width:"100%", height:54, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:16, fontWeight:500, marginBottom:"calc(env(safe-area-inset-bottom, 0px) + 26px)", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>{last?"Понятно, начать ✦":"Далее"}{!last && <ArrowRight size={18} strokeWidth={2}/>}</button>
     </div>
   );
 }
@@ -1932,6 +2128,7 @@ export default function SlowGlowApp(){
 
 function SlowGlowAppMain() {
   const [onboarded, setOnboarded] = useState(()=> sgStore.get("sg_onboarded", false));
+  const [tutorialSeen, setTutorialSeen] = useState(()=> sgStore.get("sg_tutorial", false));
   const [boards, setBoards] = useState(()=> sgStore.get("sg_boards", []));
   const [dna, setDna] = useState(null);
   useEffect(() => {
@@ -2052,6 +2249,8 @@ function SlowGlowAppMain() {
   return (
     <div style={{ minHeight:"100dvh", width:"100%", display:"flex", alignItems:"center", justifyContent:"center", padding:"12px",
       background:"linear-gradient(165deg,#F7EFD8 0%,#F1ECE0 45%,#DCE6EA 100%)", fontFamily:body, color:C.ink, boxSizing:"border-box" }}>
+      <SGSplash/>
+      {onboarded && !tutorialSeen && <IntroTour partner={ch.partner} onDone={()=>{ setTutorialSeen(true); sgStore.set("sg_tutorial", true); }}/>}
       <style>{`
         @keyframes orbBreath{0%,100%{transform:scale(1);opacity:0.9}50%{transform:scale(1.07);opacity:1}}
         .orb{animation:orbBreath 5s ease-in-out infinite}
@@ -2106,6 +2305,9 @@ function SlowGlowAppMain() {
         .anim-grad-f{background-size:200% 200%;animation:gradShiftFast 6s ease infinite}
         @keyframes gradSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         .grad-spin{animation:gradSpin 14s linear infinite}
+        @keyframes sgWordIn{0%{opacity:0;transform:translateY(12px) scale(0.985);filter:blur(7px)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+        @keyframes greetRise{0%{opacity:0;transform:translateY(16px)}100%{opacity:1;transform:translateY(0)}}
+        .greet-in{animation:greetRise 1000ms cubic-bezier(0.16,1,0.3,1) both;animation-delay:1.25s}
         @keyframes sproutGrow{0%{transform:scaleY(0) translateY(8px);opacity:0}60%{transform:scaleY(1.05) translateY(0);opacity:1}100%{transform:scaleY(1) translateY(0);opacity:1}}
         .sprout{transform-origin:bottom center;animation:sproutGrow 1100ms cubic-bezier(0.16,1,0.3,1) both}
         @keyframes leafPop{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
@@ -2527,24 +2729,90 @@ function BeautifulDay({ ch }) {
     </div>
   );
 }
+/* ── КОЛОНКА РЕДАКТОРА ─────────────────────────────────────────────
+   Короткая еженедельная рубрика от Дарьи. Показывается самый первый объект.
+   Чтобы обновить на новую неделю: добавь НОВЫЙ объект В НАЧАЛО массива.
+   Поля: date — короткая метка недели/дата; title — одна мысль (курсив);
+   body — 2–4 коротких предложения; sign — подпись. Держи текст коротким. */
+const EDITOR_NOTES = [
+  {
+    date: "Начало июля",
+    intro: "Кажется, жизнь запоминается не большими событиями, а маленькими кадрами. Поэтому этим летом я всё чаще беру с собой плёночную камеру — чтобы сохранить не идеальный момент, а настоящий: солнечный свет на стене, пустую улицу утром, чашку кофе, чей-то смех. Именно из таких деталей потом складывается ощущение счастья.",
+    blocks: [
+      { k:"Новое место недели", title:"Пешка", body:"Новое французское бистро и шахматный клуб в Москве. Здесь можно заказать бокал вина, сыграть партию в шахматы и провести вечер без спешки.", addr:"Рождественский бульвар, 10/7с1", map:"Пешка бистро Рождественский бульвар 10 Москва" },
+      { k:"Смотреть", title:"Уимблдон", body:"Уимблдон сейчас в самом разгаре. Даже если ты не следишь за теннисом, включи хотя бы один вечерний матч: белая форма, зелёные корты и ощущение английского лета, которое хочется растянуть подольше." },
+      { k:"Книга недели", title:"Вирджиния Вулф — «Волны»", body:"Один из самых красивых романов XX века о времени, памяти и человеческой жизни. Его не хочется читать быстро — лучше по несколько страниц, словно слушая шум моря.", link:["Найти на LiveLib","https://www.livelib.ru/find/books/Волны+Вирджиния+Вулф"] },
+    ],
+    sign: "Дарья, куратор Slow Glow",
+  },
+];
+function EditorColumn({ partner }){
+  const note = (typeof EDITOR_NOTES!=="undefined" && EDITOR_NOTES.length) ? EDITOR_NOTES[0] : null;
+  if (!note) return null;
+  const blocks = note.blocks || [];
+  const lead = note.intro || note.body;
+  return (
+    <div style={{ borderRadius:20, padding:"18px 20px 20px", marginBottom:26, background:C.cream, border:`1px solid ${C.line}` }}>
+      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:11 }}>
+        <span style={{ fontFamily:head, fontSize:10, letterSpacing:"0.22em", textTransform:"uppercase", color:partner, fontWeight:600 }}>Колонка редактора</span>
+        {note.date && <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.12em", textTransform:"uppercase", color:C.inkFaint }}>{note.date}</span>}
+      </div>
+      <div style={{ height:1, background:C.line, margin:"0 0 14px" }}/>
+      {lead && (
+        <div>
+          <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.2em", textTransform:"uppercase", color:C.inkFaint, marginBottom:8 }}>От редактора</div>
+          {note.title && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:21, lineHeight:1.3, color:C.ink, margin:"0 0 8px" }}>{note.title}</p>}
+          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, lineHeight:1.55, color:C.ink, margin:0 }}>{lead}</p>
+        </div>
+      )}
+      {blocks.map((b,i)=>(
+        <div key={i}>
+          <div style={{ height:1, background:C.line, margin:"16px 0 13px" }}/>
+          {b.k && <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.2em", textTransform:"uppercase", color:partner, marginBottom:6 }}>{b.k}</div>}
+          {b.title && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, lineHeight:1.25, color:C.ink, margin:"0 0 6px" }}>{b.title}</p>}
+          {b.body && <p style={{ fontSize:14, lineHeight:1.6, color:C.inkSoft, margin:0 }}>{b.body}</p>}
+          {b.addr && (
+            <a href={"https://yandex.ru/maps/?text="+encodeURIComponent(b.map||b.addr)} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:9, fontFamily:head, fontSize:12, color:partner, textDecoration:"none" }}>
+              <MapPin size={13} strokeWidth={1.8}/> {b.addr}
+            </a>
+          )}
+          {b.link && (
+            <a href={b.link[1]} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:9, fontFamily:head, fontSize:12, color:partner, textDecoration:"none" }}>
+              {b.link[0]} <ArrowRight size={13} strokeWidth={2}/>
+            </a>
+          )}
+        </div>
+      ))}
+      <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:16 }}>
+        <span style={{ color:partner }}>✦</span>
+        <span style={{ fontFamily:serif, fontStyle:"italic", fontSize:14, color:C.inkFaint }}>{note.sign || "Дарья, куратор Slow Glow"}</span>
+      </div>
+    </div>
+  );
+}
+
 function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, premium, openTravel, openLive, openMind, openCollection, openLibrary, onLive }) {
+  const introNow = useState(()=>{ if (sgIntroSeen) return false; sgIntroSeen = true; return true; })[0];
   const items = pick(todayFor(ch.id), 4, 0);
   const dnaSteps = dna && dna.steps && dna.steps.length ? dna.steps : null;
   const step = dnaSteps ? pick(dnaSteps, 1, 2)[0] : pick(stepFor(ch.id), 1, 2)[0];
   const identity = ({ summer:"спокойной, светлой и уверенной женщины в эстетике French Summer", romance:"нежной, романтичной и уверенной женщины в эстетике Romantic Bloom", coastal:"свободной, лёгкой и спокойной женщины в эстетике Coastal Living", slow:"спокойной, тёплой и наполненной женщины в эстетике Slow Living" })[ch.id] || "спокойной и уверенной женщины в своей эстетике";
   return (
     <div>
+      <div className={introNow?"greet-in":""}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <Label>Твой сезон</Label>
         <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:C.inkFaint }}>{new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long"})}</span>
       </div>
-      <div style={{ position:"relative", marginTop:6, marginBottom:8, minHeight:96 }}>
+      <div style={{ position:"relative", marginTop:10, marginBottom:10, minHeight:96 }}>
         <GlowOrb partner={ch.partner} size={96} style={{ position:"absolute", right:0, top:-2, zIndex:0 }}/>
         <h1 style={{ position:"relative", zIndex:1, fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:40, lineHeight:1.05, margin:0, color:C.ink, maxWidth:"66%" }}>
           {ch.name.split(" ")[0]}<br/>{ch.name.split(" ")[1]}
         </h1>
       </div>
-      <p style={{ fontSize:14.5, lineHeight:1.6, color:C.inkSoft, margin:"4px 0 14px" }}>Доброе утро{profile.name?`, ${profile.name}`:""}. Сегодня — способы прожить твою эстетику {ch.aes}.</p>
+      <p style={{ fontSize:15, lineHeight:1.6, color:C.inkSoft, margin:"6px 0 28px" }}>Доброе утро{profile.name?`, ${profile.name}`:""}. Несколько способов сегодня прожить твою эстетику.</p>
+      </div>
+      <EditorColumn partner={ch.partner}/>
       {openLibrary && (
         <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", margin:"2px 0 10px" }}>
           <Label>Коллекции</Label>
@@ -2552,7 +2820,7 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
         </div>
       )}
       {openCollection && (()=>{ const cap=capsuleById("french-summer"); return (
-        <button onClick={openCollection} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", padding:0, borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:18, boxShadow:`0 18px 40px -26px ${ch.partner}` }}>
+        <button onClick={openCollection} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", padding:0, borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:26, boxShadow:`0 18px 40px -26px ${ch.partner}` }}>
           <Photo t={0} url={cap.cover} h={196} radius={0}>
             <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.10) 0%, transparent 34%, rgba(26,26,26,0.64) 100%)" }}/>
           </Photo>
@@ -2560,7 +2828,7 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
           <div style={{ position:"absolute", left:16, right:16, bottom:14 }}>
             <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:27, color:"#fff", lineHeight:1.08, textShadow:"0 2px 12px rgba(26,26,26,0.5)" }}>{cap.title}</div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginTop:5 }}>
-              <span style={{ fontSize:12.5, color:"rgba(255,255,255,0.92)", lineHeight:1.3 }}>{cap.sub} — открой целиком</span>
+              <span style={{ fontSize:12.5, color:"rgba(255,255,255,0.92)", lineHeight:1.3 }}>{cap.sub}</span>
               <ArrowRight size={18} strokeWidth={2} color="#fff" style={{ flexShrink:0 }}/>
             </div>
           </div>
@@ -2575,7 +2843,7 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
             <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"#1A1A1A", fontWeight:600 }}>Ранний доступ · Slow Glow Plus</span>
           </div>
           <p style={{ position:"relative", fontFamily:serif, fontStyle:"italic", fontSize:18, lineHeight:1.32, color:"#1A1A1A", margin:0 }}>Весь премиум открыт тебе бесплатно — пока для первых.</p>
-          <p style={{ position:"relative", fontSize:12.5, lineHeight:1.45, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>AI-консьерж, стилист, путешествия, языки и подбор мест — обычно это Plus. Сейчас это твой подарок как одной из первых ✦</p>
+          <p style={{ position:"relative", fontSize:12.5, lineHeight:1.45, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>Обычно это Plus. Сейчас — твой подарок как одной из первых ✦</p>
         </div>
       )}
       <DailyRitual ch={ch} onLive={onLive}/>
@@ -2591,12 +2859,12 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
 
       <PullQuote>{pickOne(QUOTES, 5)}</PullQuote>
 
-      <div className="anim-grad" style={{ borderRadius:20, padding:"18px 20px", marginBottom:14, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 65%, ${C.oat})`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
+      <div className="anim-grad" style={{ borderRadius:20, padding:"18px 20px", marginBottom:22, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 65%, ${C.oat})`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
         <Label color="rgba(26,26,26,0.5)">Кем ты становишься</Label>
         <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:20, lineHeight:1.35, color:C.ink, margin:"8px 0 0" }}>Ты создаёшь жизнь {identity}.</p>
       </div>
 
-      <div style={{ borderRadius:20, padding:"18px 20px", marginBottom:14, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
+      <div style={{ borderRadius:20, padding:"18px 20px", marginBottom:22, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
           <Label color={C.inkFaint}>Твой путь к жизни мечты</Label>
           <span style={{ fontFamily:head, fontSize:9, letterSpacing:"0.12em", color:C.inkFaint }}>БЕЗ ГОНКИ</span>
@@ -2875,6 +3143,27 @@ function Places_({ profile, partner, chId, userPlaces, openAddPlace, onEditPlace
       </div>
       <p style={{ fontSize:13.5, color:C.inkSoft, margin:"0 0 18px", lineHeight:1.5 }}>Не нужно ничего искать в общем списке — мы уже отобрали самые красивые места и занятия под твою эстетику.</p>
 
+      {/* Быстрые входы наверху — спорт, языки, забота (чтобы не листать до низа) */}
+      <div style={{ margin:"2px 0 10px" }}><Label color={C.inkFaint}>Под твою эстетику</Label></div>
+      <div style={{ display:"flex", gap:8 }}>
+        <button onClick={openSport} className="pop" style={{ flex:1, textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", borderRadius:16, padding:"13px 13px", cursor:"pointer" }}>
+          <Label color={C.inkFaint}>Каждый день</Label>
+          <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, margin:"3px 0 2px", display:"flex", alignItems:"center", gap:7 }}><BrandIcon name="wave" size={17} color={partner}/>Спорт</div>
+          <p style={{ fontSize:11.5, color:C.inkSoft, margin:0, lineHeight:1.3 }}>бег, пилатес, видео</p>
+        </button>
+        <button onClick={openLang} className="pop" style={{ flex:1, textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", borderRadius:16, padding:"13px 13px", cursor:"pointer" }}>
+          <Label color={C.inkFaint}>Красиво</Label>
+          <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, margin:"3px 0 2px", display:"flex", alignItems:"center", gap:7 }}><BrandIcon name="book" size={17} color={partner}/>Языки</div>
+          <p style={{ fontSize:11.5, color:C.inkSoft, margin:0, lineHeight:1.3 }}>уроки по неделям</p>
+        </button>
+      </div>
+      {profile.pet && profile.pet!=="Нет" && (<button onClick={openPets} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", gap:13, marginTop:12, borderRadius:18, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, padding:"14px 16px", cursor:"pointer" }}>
+        <GlowOrb partner={partner} size={36} spark={false}/>
+        <div style={{ flex:1 }}><Label color={C.inkFaint}>Для тех, у кого есть питомец</Label><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, marginTop:2 }}>Питомцы — забота и радость</div><p style={{ fontSize:11.5, color:C.inkSoft, margin:"2px 0 0", lineHeight:1.3 }}>маршруты · мероприятия · психология · игрушки</p></div>
+        <ArrowRight size={19} strokeWidth={1.7} color={C.ink}/>
+      </button>)}
+      <div style={{ height:1, background:C.line, margin:"20px 0 24px" }}/>
+
       {/* Карта Slow Glow — точные эстетичные места рядом */}
       <div style={{ marginBottom:26 }}>
         <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, margin:"0 0 4px" }}>
@@ -3091,26 +3380,6 @@ function Places_({ profile, partner, chId, userPlaces, openAddPlace, onEditPlace
           );
         })}
       </div>
-
-      {/* Ещё под твою эстетику — компактные входы */}
-      <div style={{ margin:"22px 0 10px" }}><Label color={C.inkFaint}>Ещё под твою эстетику</Label></div>
-      <div style={{ display:"flex", gap:8 }}>
-        <button onClick={openSport} className="pop" style={{ flex:1, textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", borderRadius:16, padding:"13px 13px", cursor:"pointer" }}>
-          <Label color={C.inkFaint}>Каждый день</Label>
-          <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, margin:"3px 0 2px", display:"flex", alignItems:"center", gap:7 }}><BrandIcon name="wave" size={17} color={partner}/>Спорт</div>
-          <p style={{ fontSize:11.5, color:C.inkSoft, margin:0, lineHeight:1.3 }}>бег, пилатес, видео</p>
-        </button>
-        <button onClick={openLang} className="pop" style={{ flex:1, textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", borderRadius:16, padding:"13px 13px", cursor:"pointer" }}>
-          <Label color={C.inkFaint}>Красиво</Label>
-          <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, margin:"3px 0 2px", display:"flex", alignItems:"center", gap:7 }}><BrandIcon name="book" size={17} color={partner}/>Языки</div>
-          <p style={{ fontSize:11.5, color:C.inkSoft, margin:0, lineHeight:1.3 }}>уроки по неделям</p>
-        </button>
-      </div>
-      {profile.pet && profile.pet!=="Нет" && (<button onClick={openPets} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", gap:13, marginTop:12, borderRadius:18, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, padding:"14px 16px", cursor:"pointer" }}>
-        <GlowOrb partner={partner} size={36} spark={false}/>
-        <div style={{ flex:1 }}><Label color={C.inkFaint}>Для тех, у кого есть питомец</Label><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, marginTop:2 }}>Питомцы — забота и радость</div><p style={{ fontSize:11.5, color:C.inkSoft, margin:"2px 0 0", lineHeight:1.3 }}>маршруты · мероприятия · психология · игрушки</p></div>
-        <ArrowRight size={19} strokeWidth={1.7} color={C.ink}/>
-      </button>)}
     </div>
   );
 }
@@ -3162,9 +3431,17 @@ function Me_({ ch, chapterId, setChapterId, setPin, setWorld, premium, earlyAcce
           </button>
         ))}
       </div>
-      <button onClick={()=>setPin(true)} style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.5)", borderRadius:18, padding:"15px 18px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
-        <div><Label>Сохранения → Реальность</Label><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:18, color:C.ink, marginTop:3 }}>Как повторить твои образы</div></div>
-        <ArrowRight size={20} strokeWidth={1.7} color={C.inkSoft}/>
+      <div style={{ margin:"2px 0 10px" }}><Label color={C.inkFaint}>ИИ Slow Glow</Label></div>
+      <button onClick={()=>setPin(true)} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", cursor:"pointer", borderRadius:20, overflow:"hidden", padding:"18px 20px", marginBottom:22, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 72%, ${C.oat})`, boxShadow:`0 18px 38px -24px ${ch.partner}` }}>
+        <div style={{ position:"absolute", right:-14, top:-14, width:88, height:88, borderRadius:99, background:"rgba(255,255,255,0.22)" }}/>
+        <div style={{ position:"relative", display:"flex", alignItems:"center", gap:13 }}>
+          <GlowOrb partner={ch.partner} size={44}/>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:"rgba(26,26,26,0.6)", fontWeight:600, marginBottom:3 }}>Анализатор пинов</div>
+            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, color:C.ink, lineHeight:1.15 }}>Не понимаешь, что тебя цепляет?</div>
+            <p style={{ fontSize:12.5, lineHeight:1.42, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>Загрузи любимые сохранения — ИИ соберёт твою эстетику и доску мечты заново. Возвращайся, когда меняется настроение.</p>
+          </div>
+        </div>
       </button>
       <button onClick={openPlus} style={{ width:"100%", textAlign:"left", border:"none", cursor:"pointer", borderRadius:20, overflow:"hidden", padding:0, marginBottom:14, background:premium?`linear-gradient(120deg, ${C.butter}, ${ch.partner})`:"rgba(255,255,255,0.55)", boxShadow:premium?"0 16px 34px -22px rgba(26,26,26,0.5)":"none", borderWidth:premium?0:1, borderStyle:"solid", borderColor:C.line }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px" }}>
@@ -4063,6 +4340,7 @@ function CollectionView({ ch, data, city, onClose }){
         );
       })}
 
+      <ShareList ch={ch} data={data}/>
       <div style={{ height:1, background:C.line, margin:"22px 0 14px" }}/>
       <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:14, color:C.inkFaint, textAlign:"center", margin:0 }}>Slow Glow · твой куратор красивой жизни ✦</p>
     </OverlayShell>
@@ -4593,6 +4871,7 @@ function PinReality({ ch, dna, onClose }) {
       <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:20 }}>{D.seeking.map(p=><span key={p}>{chip(p, `${ch.partner}33`)}</span>)}</div>
 
       <ShareReality ch={ch} D={D}/>
+      <ShareBoard ch={ch} imgs={imgs} D={D}/>
 
       <Label>Что у тебя уже есть</Label>
       <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Ты ближе к этой жизни, чем кажется. Это уже с тобой.</p>
@@ -5981,6 +6260,7 @@ function LangView({ ch, premium, onClose, openPlus }) {
         <p style={{ fontFamily:body, fontSize:12.5, lineHeight:1.5, color:C.inkFaint, margin:"6px 0 0" }}>{lvl==="Начальный" ? "Короче и проще — мягкий вход, перевод под рукой." : lvl==="Продвинутый" ? "Длиннее и сложнее — добавлен продвинутый абзац и изысканная лексика, перевод скрыт." : "Полный текст недели в среднем темпе."}</p>
         <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:27, lineHeight:1.12, margin:"6px 0 12px", color:C.ink }}>{tier==="basic" ? "Приветствия и кафе" : th.theme}</h1>
         <button onClick={savePdf} className="pop" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", height:46, marginBottom:18, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:13.5, fontWeight:500 }}><Download size={16} strokeWidth={1.8}/> Сохранить Carnet в PDF</button>
+        <ShareCarnetPage ch={ch} th={th} rd={rd} lang={sel.n} words={lvlWords}/>
         <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, lineHeight:1.5, color:C.inkSoft, textAlign:"center", margin:"-4px 0 18px" }}>Carnet (карне) — дневник путешественника. Ты не зубришь язык, а собираешь жизнь на нём: истории, города, слова и штампы.</p>
         {tier==="basic" ? (
           <>
