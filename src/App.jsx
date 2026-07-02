@@ -4827,7 +4827,14 @@ function PinReality({ ch, dna, onClose }) {
   const [imgs, setImgs] = useState([]);
   const [ai, setAi] = useState(null);
   const [busy, setBusy] = useState(false);
-  const D = ai || dreamFor(ch.id);
+  const _base = dreamFor(ch.id);
+  const _fbRich = {
+    read: `Твоя эстетика — «${ch.aes}»: спокойствие, красота в мелочах и медленный ритм. Ты не гонишься за идеалом — ты обживаешь жизнь, которая уже началась.`,
+    actions: [ "Поставь свежие цветы или веточку зелени на видное место.", "Сервируй завтрак красиво: тарелка, льняная салфетка, свет из окна.", "Убери телефон на первый час после пробуждения.", "Вечером зажги свечу вместо верхнего света.", "Пей воду из красивого стакана, не спеша.", "Оставь на виду 3 любимые вещи, лишнее убери.", "Проведи 10 минут в тишине у окна с чаем.", "Приготовь простое блюдо из сезонных продуктов." ],
+    shopping: [ "Льняная скатерть или салфетки нейтрального тона", "Стеклянный графин и стакан для воды", "Ароматическая свеча со спокойным запахом", "Небольшая ваза для сезонных цветов", "Базовая льняная рубашка или платье", "Красивая керамическая кружка", "Плетёная корзина для мелочей", "Книга о медленной жизни (Kinfolk, Flow)" ],
+    rituals: [ "Медленное утро — кофе у окна без телефона", "Пятничные цветы — букет себе раз в неделю", "Вечер при свече — 20 минут книги или тишины", "Воскресный сброс — уют, порядок и план недели", "Прогулка без наушников — слушать город и себя" ],
+  };
+  const D = { ..._base, ..._fbRich, ...(ai||{}) };
   const onPick = async (e) => {
     const files = Array.from(e.target.files||[]).slice(0,8); if (!files.length) return;
     const read = (f)=>new Promise((res)=>{ const r=new FileReader(); r.onload=()=>res({ url:URL.createObjectURL(f), b64:String(r.result).split(",")[1], media:/png|webp|gif/.test(f.type)?f.type:"image/jpeg" }); r.readAsDataURL(f); });
@@ -4839,12 +4846,12 @@ function PinReality({ ch, dna, onClose }) {
     try {
       const content = imgs.slice(0,6).map(im=>({ type:"image", source:{ type:"base64", media_type:im.media, data:im.b64 } }));
       for(let _i=0;_i<content.length;_i++){ content[_i]=await sgShrinkBlock(content[_i]); }
-      content.push({ type:"text", text:'Это мои сохранённые картинки желаемой эстетики жизни. Проанализируй их вместе и верни ТОЛЬКО JSON без markdown по-русски: {"patterns":[6 коротких повторяющихся образов или объектов],"seeking":[5 чувств или ценностей, которые я на самом деле ищу за этими картинками],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький шаг на сегодня","week":[3 мягких внедрения на неделю],"month":[5 изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности.' });
-      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:900, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется. Пиши во втором лице, тепло и лично — как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
+      content.push({ type:"text", text:'Это мои сохранённые картинки (пины) желаемой эстетики жизни. Изучи их внимательно и вместе, как единый образ жизни, и верни ТОЛЬКО валидный JSON без markdown, по-русски: {"read":"2-3 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно и тепло, во втором лице","patterns":[6 конкретных повторяющихся образов, объектов или цветов, которые реально видно на картинках],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий прямо из этих пинов — каждое начинается с глагола, максимально предметно (что именно сделать), без общих фраз],"shopping":[8 конкретных вещей докупить под эту эстетику — реальные предметы с материалом, цветом или типом, в основном доступные по цене, каждый короткой фразой],"rituals":[5 повторяемых ритуалов, каждый одной строкой в формате «Название — суть»; утренние, вечерние или недельные],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Пиши предметно: конкретные вещи, места и действия, а не абстракции. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности. Верни строго JSON.' });
+      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:2000, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни и внимательный визуальный аналитик. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи для покупки и ритуалы, без воды и абстракций. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
       const data = await r.json();
       let txt = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
       const obj = sgParseJSON(txt);
-      if (obj && obj.patterns) setAi(obj);
+      if (obj && obj.patterns) { const _a=(x)=>Array.isArray(x)?x:[]; setAi({ ...obj, patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month) }); }
     } catch(e) {}
     setBusy(false);
   };
@@ -4885,6 +4892,13 @@ function PinReality({ ch, dna, onClose }) {
         </div>
       )}
 
+      {D.read && (
+        <div className="fade" style={{ marginBottom:20, borderRadius:16, padding:"14px 16px", background:"rgba(255,255,255,0.55)", border:`1px solid ${C.line}` }}>
+          <Label color={ch.partner}>Что говорят твои пины</Label>
+          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, lineHeight:1.45, color:C.ink, margin:"6px 0 0" }}>{D.read}</p>
+        </div>
+      )}
+
       <Label>Что я вижу в твоих сохранениях</Label>
       <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Это повторяется в том, что тебя цепляет — так выглядит твоя эстетика «{ch.aes}».</p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:20 }}>{D.patterns.map(p=><span key={p}>{chip(p, C.sage)}</span>)}</div>
@@ -4892,6 +4906,39 @@ function PinReality({ ch, dna, onClose }) {
       <Label>Что ты на самом деле ищешь</Label>
       <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Тебя притягивают не сами картинки, а чувства за ними.</p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:20 }}>{D.seeking.map(p=><span key={p}>{chip(p, `${ch.partner}33`)}</span>)}</div>
+
+      {D.actions && D.actions.length>0 && (<>
+        <Label>Точные действия под твои пины</Label>
+        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Конкретные шаги, чтобы прожить эту эстетику уже на этой неделе.</p>
+        <div style={{ marginBottom:22 }}>{D.actions.map((a,i)=>(
+          <div key={i} style={{ display:"flex", gap:12, marginBottom:10 }}>
+            <div style={{ width:24, height:24, borderRadius:99, flexShrink:0, background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${ch.partner})`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:serif, fontStyle:"italic", fontSize:13, color:C.ink }}>{i+1}</div>
+            <p style={{ fontSize:14, lineHeight:1.45, color:C.ink, margin:"2px 0 0" }}>{a}</p>
+          </div>
+        ))}</div>
+      </>)}
+
+      {D.shopping && D.shopping.length>0 && (<>
+        <Label>Список покупок под эту эстетику</Label>
+        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Что докупить, чтобы дом и день стали ближе к твоим сохранениям.</p>
+        <div style={{ marginBottom:22, borderRadius:16, overflow:"hidden", border:`1px solid ${C.line}` }}>{D.shopping.map((s,i)=>(
+          <div key={i} style={{ display:"flex", gap:11, alignItems:"flex-start", padding:"11px 14px", background:i%2?"rgba(255,255,255,0.5)":"rgba(226,201,164,0.16)", borderTop:i?`1px solid ${C.line}`:"none" }}>
+            <span style={{ width:19, height:19, borderRadius:6, flexShrink:0, marginTop:1, border:`1.5px solid ${ch.partner}`, display:"flex", alignItems:"center", justifyContent:"center" }}><Check size={12} strokeWidth={2.4} color={ch.partner}/></span>
+            <span style={{ fontSize:14, lineHeight:1.4, color:C.ink }}>{s}</span>
+          </div>
+        ))}</div>
+      </>)}
+
+      {D.rituals && D.rituals.length>0 && (<>
+        <Label>Ритуалы, которые это закрепят</Label>
+        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Повторяемые маленькие ритуалы — из них и складывается жизнь мечты.</p>
+        <div style={{ marginBottom:24 }}>{D.rituals.map((rt,i)=>(
+          <div key={i} style={{ display:"flex", gap:11, alignItems:"flex-start", background:`${ch.partner}18`, borderRadius:12, padding:"11px 13px", marginBottom:9 }}>
+            <GlowOrb partner={ch.partner} size={22} spark={false} style={{ flexShrink:0, marginTop:1 }}/>
+            <p style={{ fontSize:14, lineHeight:1.42, color:C.ink, margin:0 }}>{rt}</p>
+          </div>
+        ))}</div>
+      </>)}
 
       <ShareReality ch={ch} D={D}/>
       <ShareBoard ch={ch} imgs={imgs} D={D}/>
