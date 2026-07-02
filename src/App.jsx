@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Home, MapPin, Plus, User, Search, Heart, ChevronDown, ArrowRight, ArrowLeft, X, Send, Clock, Users, Wind, ExternalLink, Play, Download, Sparkles, Check, BookOpen } from "lucide-react";
-import { LANG_WEEK_EXTRA } from "./lang_weeks.js";
+import { Home, MapPin, Plus, User, Search, Heart, ChevronDown, ArrowRight, ArrowLeft, X, Send, Clock, Users, Wind, ExternalLink, Play, Download, Sparkles, Check } from "lucide-react";
 
 const C = {
   butter:"#F6E7A6", oat:"#F3EFE4", sage:"#D7DEC9", seaMist:"#CBD6DE", sand:"#E8E2D6", ink:"#1A1A1A",
@@ -608,7 +607,7 @@ const IMG = {
 
 const head = "'Satoshi','Inter',-apple-system,sans-serif";
 const serif = "'Instrument Serif', Georgia, serif";
-const body = "'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif";
+const body = "'Inter', sans-serif";
 
 /* ── Ежедневная ротация: seedToday меняется каждый день; sgRefreshDay() пересчитывает «сегодня» (вызывается при возврате в приложение и в полночь) ── */
 const sgDaySeed = () => Math.floor(Date.now()/86400000);
@@ -626,6 +625,25 @@ const sgParseJSON = (raw) => {
   if (i >= 0 && j > i) { try { return JSON.parse(s.slice(i, j+1)); } catch(e){} }
   return null;
 };
+/* Ужимаем фото перед отправкой в ИИ: макс. сторона ~1024px, JPEG ~0.82 — чтобы
+   не упираться в лимит тела запроса Vercel (~4.5 МБ) и чтобы анализ шёл быстрее.
+   При любой осечке возвращаем исходный блок без изменений. */
+async function sgShrinkBlock(block){
+  try{
+    if(!block || block.type!=="image" || !block.source || block.source.type!=="base64" || !block.source.data) return block;
+    if(typeof document==="undefined" || typeof Image==="undefined") return block;
+    const mt = block.source.media_type || "image/jpeg";
+    const img = await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src="data:"+mt+";base64,"+block.source.data; });
+    const MAX=1024, w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    if(!w || !h) return block;
+    if(Math.max(w,h)<=MAX && block.source.data.length<900000) return block; // уже небольшое — не трогаем
+    const s=Math.min(1, MAX/Math.max(w,h)), cw=Math.max(1,Math.round(w*s)), chh=Math.max(1,Math.round(h*s));
+    const cv=document.createElement("canvas"); cv.width=cw; cv.height=chh;
+    cv.getContext("2d").drawImage(img,0,0,cw,chh);
+    const out=(cv.toDataURL("image/jpeg",0.82).split(",")[1])||"";
+    return out ? { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:out } } : block;
+  }catch(e){ return block; }
+}
 /* Чистим текст от ИИ: убираем markdown-разметку (** __ # > и маркеры списков), чтобы нигде не торчали «звёздочки» */
 const stripMd = (raw) => {
   if (raw == null) return raw;
@@ -1040,13 +1058,6 @@ const RUBRICS = {
     { t:2, k:"Вдохновение", v:"Kinfolk, свежий номер", why:"Журнал о медленной жизни.", d:{ k:"Журнал", lead:"Издатель: Kinfolk (Нейтан Уильямс). Эстетский журнал о медленной жизни, доме, еде и людях. Визуальный отдых для глаз.", s:[{t:"Как читать", p:"Не залпом — пара разворотов вечером, как медитация."}], tip:"Сохраняй понравившиеся кадры в свой мудборд.", links:[["О журнале","https://www.kinfolk.com/"]] }},
     { t:1, k:"Поэзия", v:"«Цветы зла»", why:"Шарль Бодлер · поэзия Парижа.", d:{ k:"Поэзия", lead:"Автор: Шарль Бодлер. Классический сборник о красоте, городе и меланхолии — пара страниц перед сном настраивают на медленный лад.", s:[{t:"Зачем", p:"Поэзия замедляет внутренний темп лучше прозы."}], tip:"Читай вслух шёпотом — иначе звучит иначе." }},
     { t:4, k:"Нон-фикшн", v:"«В похвалу тени»", why:"Дзюнъитиро Танидзаки · эстетика.", d:{ k:"Нон-фикшн", lead:"Автор: Дзюнъитиро Танидзаки. Изящное эссе о японской эстетике тени, полумрака и сдержанной красоты — о том, почему мягкий свет красивее яркого.", s:[{t:"Идея", p:"Красота живёт в полутонах, а не в ярком свете."}], tip:"Выпиши одну мысль и проживи её на этой неделе." }},
-    { t:1, k:"Нон-фикшн", v:"«Париж в руинах»", why:"Себастьян Сми · рождение импрессионизма.", d:{ k:"Нон-фикшн · искусство", lead:"Автор: Себастьян Сми. Как импрессионизм родился среди хаоса осаждённого Парижа — история Эдуарда Мане и Берты Моризо, первой женщины-импрессионистки. Красота, рождённая из катастрофы.", s:[{t:"Кому зайдёт", p:"Если любишь Моне и хочешь понять, откуда взялся тот самый свет на картинах."}], tip:"Читай медленно, разглядывая репродукции рядом.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Париж+в+руинах+Сми"]] }},
-    { t:4, k:"Рассказы", v:"«Собиратель ракушек»", why:"Энтони Дорр · море, природа, тишина.", d:{ k:"Художественная · рассказы", lead:"Автор: Энтони Дорр — тот самый, что написал «Весь невидимый нам свет». Восемь поэтичных историй о море, природе и месте человека в ней: неторопливых и завораживающих.", s:[{t:"Кому зайдёт", p:"Если любишь тихую прозу о природе и красоту в мелочах."}], tip:"Идеально по одному рассказу за вечер.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Собиратель+ракушек+Дорр"]] }},
-    { t:5, k:"Роман", v:"«Колдовской апрель»", why:"Элизабет фон Арним · Италия и апрель.", d:{ k:"Художественная · классика", lead:"Автор: Элизабет фон Арним. Четыре очень разные англичанки снимают на апрель замок у моря в Италии — и солнце, глицинии и тишина меняют их изнутри. Светлая книга о том, как красота лечит.", s:[{t:"Кому зайдёт", p:"Если хочется сбежать в итальянскую весну, не выходя из дома."}], tip:"Лучшее чтение для начала весны.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Колдовской+апрель+Арним"]] }},
-    { t:0, k:"Роман", v:"«Элегантность ёжика»", why:"Мюриэль Барбери · красота повседневного.", d:{ k:"Художественная · современная", lead:"Автор: Мюриэль Барбери. Консьержка парижского дома прячет за простотой любовь к искусству и философии, а двенадцатилетняя девочка ищет смысл. Тонкая книга о тайной красоте обычных людей и дней.", s:[{t:"Кому зайдёт", p:"Если веришь, что красота прячется в самом незаметном."}], tip:"Выписывай понравившиеся мысли — их здесь много.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Элегантность+ёжика"]] }},
-    { t:3, k:"Роман", v:"«Стоунер»", why:"Джон Уильямс · тихая классика заново.", d:{ k:"Художественная · классика", lead:"Автор: Джон Уильямс. Негромкая история одной обычной жизни университетского преподавателя — книга, которую заново открыли спустя полвека и полюбили за честность и тишину.", s:[{t:"Кому зайдёт", p:"Если ценишь спокойную, глубокую прозу без спецэффектов."}], tip:"Не спеши — эта книга о том, что важное часто негромкое.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Стоунер+Уильямс"]] }},
-    { t:4, k:"Нон-фикшн", v:"«Книга о чае»", why:"Какудзо Окакура · эстетика простоты.", d:{ k:"Нон-фикшн · эстетика", lead:"Автор: Какудзо Окакура. Классическое эссе о чайной церемонии как искусстве жить: о простоте, внимании к моменту и красоте несовершенного.", s:[{t:"Идея", p:"Чай — это не напиток, а способ замедлиться и заметить."}], tip:"Читай с чашкой чая — иначе нельзя.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Книга+о+чае+Окакура"]] }},
-    { t:2, k:"Нон-фикшн", v:"«Ваби-саби»", why:"Леонард Корен · красота несовершенного.", d:{ k:"Нон-фикшн · эстетика", lead:"Автор: Леонард Корен. Короткая книга о японской эстетике ваби-саби — красоте простого, скромного и несовершенного. О том, почему трещинка и патина времени делают вещь живой.", s:[{t:"Что возьмёшь", b:["Ценить неидеальное","Замечать течение времени","Меньше вещей, но подлиннее"]}], tip:"Оглядись дома и найди свою «ваби-саби» деталь.", links:[["Найти на LiveLib","https://www.livelib.ru/find/books/Ваби-саби+Корен"]] }},
   ]},
   recipes:{ label:"Recipes", title:"Вкус твоего сезона", partner:C.coral, salt:5, recipe:true, items:[
     { t:4, k:"Завтрак", v:"Йогурт, инжир, мёд", url:IMG.figYogurt, why:"5 минут — лето на тарелке.", time:"5 мин", serves:"1 порция", market:"Инжир: бери мягкий, тяжёлый, с капелькой сиропа на хвостике — он спелый и сладкий. Жёсткий и без аромата ещё не дозрел.", ingredients:["Греческий йогурт — 200 г","Инжир — 3 шт","Мёд — 1 ст.л.","Грецкие орехи — горсть","Корица — щепотка"], steps:["Выложи йогурт в красивую миску.","Разрежь инжир на четвертинки.","Полей мёдом, добавь орехи и корицу.","Ешь медленно, у окна."] },
@@ -1294,35 +1305,6 @@ async function wikiImg(query, lang = "ru") {
     return src;
   } catch (e) { _wikiCache[key] = null; return lang !== "en" ? wikiImg(query, "en") : null; }
 }
-// Уменьшает и сжимает выбранное пользователем фото перед сохранением:
-// большие снимки с телефона (3–8 МБ) превращаются в лёгкий JPEG (~100–250 КБ),
-// который помещается в хранилище и быстро грузится. Без этого большое фото
-// переполняет localStorage и место/момент не сохраняется.
-function shrinkImage(file, maxDim, quality){
-  return new Promise((resolve)=>{
-    const fallback = ()=>{ try{ const fr=new FileReader(); fr.onload=()=>resolve(String(fr.result||"")); fr.onerror=()=>resolve(""); fr.readAsDataURL(file); }catch(_){ resolve(""); } };
-    try{
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = ()=>{
-        try{
-          let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-          if (!w || !h){ try{ URL.revokeObjectURL(url); }catch(_){} return fallback(); }
-          const m = maxDim || 1280;
-          if (w > m || h > m){ const s = m/Math.max(w,h); w = Math.round(w*s); h = Math.round(h*s); }
-          const c = document.createElement("canvas"); c.width = w; c.height = h;
-          c.getContext("2d").drawImage(img, 0, 0, w, h);
-          const out = c.toDataURL("image/jpeg", quality || 0.82);
-          try{ URL.revokeObjectURL(url); }catch(_){}
-          resolve(out && out.length > 24 ? out : ""); 
-        }catch(err){ try{ URL.revokeObjectURL(url); }catch(_){} fallback(); }
-      };
-      img.onerror = ()=>{ try{ URL.revokeObjectURL(url); }catch(_){} fallback(); };
-      img.src = url;
-    }catch(err){ fallback(); }
-  });
-}
-
 function Photo({ t = 0, url, q, qlang, h, radius = 14, fb, style, children, icon }) {
   const [src, setSrc] = useState(url || fb || null);
   const [failed, setFailed] = useState(false);
@@ -1338,7 +1320,7 @@ function Photo({ t = 0, url, q, qlang, h, radius = 14, fb, style, children, icon
     <div style={{ position:"relative", height:h, borderRadius:radius, overflow:"hidden",
       background:PH[((t%PH.length)+PH.length)%PH.length], boxShadow:"0 14px 30px -22px rgba(26,26,26,0.4)", ...style }}>
       {!showDeco ?
-        <img src={src} alt="" className="fade" loading="lazy" decoding="async" onError={()=>{ if (fb && src !== fb) { setSrc(fb); } else { setFailed(true); } }} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/> :
+        <img src={src} alt="" className="fade" onError={()=>{ if (fb && src !== fb) { setSrc(fb); } else { setFailed(true); } }} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/> :
         <img src={decoArt(t, icon)} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>}
       {children}
     </div>
@@ -1748,21 +1730,6 @@ function DailyRitual({ ch, onLive }){
 function sgWrap(x,t,cx,cy,maxW,lh){ const w=String(t).split(" "); let line="",L=[]; w.forEach(o=>{const tt=line?line+" "+o:o; if(x.measureText(tt).width>maxW&&line){L.push(line);line=o;}else line=tt;}); L.push(line); const s=cy-(L.length-1)*lh/2; L.forEach((l,i)=>x.fillText(l,cx,s+i*lh)); }
 function sgRound(x,rx,ry,w,h,r){ x.beginPath(); x.moveTo(rx+r,ry); x.arcTo(rx+w,ry,rx+w,ry+h,r); x.arcTo(rx+w,ry+h,rx,ry+h,r); x.arcTo(rx,ry+h,rx,ry,r); x.arcTo(rx,ry,rx+w,ry,r); x.closePath(); }
 
-/* ── Издательский «журнальный» слой для шер-карточек 9:16 (Kinfolk):
-   бумажный фон, тонкая рамка, мастхед, кикер, подпись — единый язык на все карточки.
-   Дорого и сдержанно: много воздуха, serif-заголовки, тихий знак, один акцент. ── */
-function sgSpaced(s){ return String(s).split("").join("\u2009"); }
-function sgHair(x,x1,y,x2,col,lw){ x.save(); x.strokeStyle=col||"rgba(26,26,26,0.16)"; x.lineWidth=lw||2; x.beginPath(); x.moveTo(x1,y); x.lineTo(x2,y); x.stroke(); x.restore(); }
-function sgPaper(x,W,H){ x.fillStyle=C.cream; x.fillRect(0,0,W,H); const v=x.createRadialGradient(W/2,H*0.42,H*0.18,W/2,H*0.5,H*0.78); v.addColorStop(0,"rgba(255,255,255,0)"); v.addColorStop(1,"rgba(214,205,182,0.32)"); x.fillStyle=v; x.fillRect(0,0,W,H); }
-function sgFrame(x,W,H,m){ x.save(); x.strokeStyle="rgba(26,26,26,0.15)"; x.lineWidth=2; x.strokeRect(m,m,W-2*m,H-2*m); x.restore(); }
-function sgMasthead(x,W,y){ x.save(); x.textAlign="center"; x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 26px Inter, sans-serif"; x.fillText(sgSpaced("SLOW GLOW"),W/2,y); x.globalAlpha=1; x.restore(); }
-function sgKicker(x,W,text,y,accent){ x.save(); x.textAlign="center"; x.fillStyle=accent||C.ink; x.globalAlpha=accent?0.95:0.6; x.font="600 27px Inter, sans-serif"; x.fillText(sgSpaced(String(text).toUpperCase()),W/2,y); x.globalAlpha=1; sgHair(x,W/2-38,y+22,W/2+38,accent||"rgba(26,26,26,0.3)",2); x.restore(); }
-function sgFooter(x,W,H,m){ const y=H-m-92; sgHair(x,m+30,y,W-m-30,"rgba(26,26,26,0.16)",2); x.save(); x.textAlign="center"; x.fillStyle=C.ink; x.globalAlpha=0.5; x.font="500 30px Inter, sans-serif"; x.fillText(sgSpaced("slow-glow.app"),W/2,y+52); x.globalAlpha=0.42; x.font="italic 400 33px 'Instrument Serif', Georgia, serif"; x.fillText("заметь, что красиво",W/2,y+96); x.globalAlpha=1; x.restore(); }
-function sgFit(x,t,maxW){ t=String(t); if(x.measureText(t).width<=maxW) return t; while(t.length>1 && x.measureText(t+"\u2026").width>maxW) t=t.slice(0,-1); return t.replace(/\s+$/,"")+"\u2026"; }
-function sgLoadImg(url){ return new Promise(res=>{ if(!url){res(null);return;} const im=new Image(); try{ if(!/^data:/.test(url)) im.crossOrigin="anonymous"; }catch(e){} im.onload=()=>res(im); im.onerror=()=>res(null); try{ im.src=url; }catch(e){ res(null); } }); }
-function sgCoverImg(x,img,dx,dy,dw,dh,r){ x.save(); sgRound(x,dx,dy,dw,dh,r||0); x.clip(); if(img){ const ir=img.width/img.height, dr=dw/dh; let sw,sh,sx,sy; if(ir>dr){ sh=img.height; sw=sh*dr; sx=(img.width-sw)/2; sy=0; } else { sw=img.width; sh=sw/dr; sx=0; sy=(img.height-sh)/2; } try{ x.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh); }catch(e){} } else { const g=x.createLinearGradient(dx,dy,dx+dw,dy+dh); g.addColorStop(0,C.oat); g.addColorStop(1,C.sage); x.fillStyle=g; x.fillRect(dx,dy,dw,dh); } x.restore(); }
-function sgPills(x,W,items,y,maxW){ if(!items||!items.length) return y; x.save(); x.textAlign="center"; x.font="500 36px Inter, sans-serif"; const gap=22,padX=38,h=80; const ws=items.map(t=>Math.min(maxW||520,x.measureText(t).width)+padX*2); const tot=ws.reduce((a,b)=>a+b,0)+gap*(ws.length-1); let cx=W/2-tot/2; items.forEach((t,i)=>{ const w=ws[i]; x.strokeStyle="rgba(26,26,26,0.26)"; x.lineWidth=2; sgRound(x,cx,y,w,h,h/2); x.stroke(); x.fillStyle=C.ink; x.fillText(sgFit(x,t,(maxW||520)),cx+w/2,y+h/2+12); cx+=w+gap; }); x.restore(); return y+h; }
-
 function ShareReality({ ch, D }){
   const ref = useRef(null);
   const [busy,setBusy]=useState(false);
@@ -1770,15 +1737,20 @@ function ShareReality({ ch, D }){
   const shareText = `Моя эстетика по версии Slow Glow — «${ch.aes}»: ${keys.join(" · ")}. Узнай свою → slow-glow.app`;
   async function paint(){
     const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
-    try{ await document.fonts.load("400 140px 'Instrument Serif'"); await document.fonts.load("500 27px Inter"); await document.fonts.ready; }catch(e){}
-    sgPaper(x,W,H); sgFrame(x,W,H,46); x.textAlign="center";
-    sgMasthead(x,W,150);
-    sgKicker(x,W,"моя эстетика",470,ch.partner);
-    x.fillStyle=C.ink; x.font="400 138px 'Instrument Serif', Georgia, serif"; sgWrap(x, ch.aes, W/2, 700, W-260, 138);
-    if(keys.length) sgPills(x, W, keys, 990, 440);
-    x.globalAlpha=0.68; x.fillStyle=C.ink; x.font="italic 400 50px 'Instrument Serif', Georgia, serif";
-    sgWrap(x, (D.seeking&&D.seeking[0])?("ты ищешь "+String(D.seeking[0]).toLowerCase()):"ты ближе, чем кажется", W/2, 1280, W-300, 68); x.globalAlpha=1;
-    sgFooter(x,W,H,46);
+    try{ await document.fonts.load("400 64px 'Instrument Serif'"); await document.fonts.ready; }catch(e){}
+    const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,C.butter); g.addColorStop(1,ch.partner);
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    x.fillStyle="rgba(255,255,255,0.16)"; x.beginPath(); x.arc(W*0.78,H*0.2,320,0,7); x.fill();
+    x.textAlign="center"; x.fillStyle="#1A1A1A";
+    x.globalAlpha=.62; x.font="500 34px Inter, sans-serif"; x.fillText("S L O W   G L O W", W/2, 150);
+    x.font="500 30px Inter, sans-serif"; x.fillText("МОЯ ЭСТЕТИКА", W/2, 660); x.globalAlpha=1;
+    x.font="400 132px 'Instrument Serif', Georgia, serif"; sgWrap(x, ch.aes, W/2, 820, W-200, 132);
+    x.font="500 40px Inter, sans-serif";
+    const ws=keys.map(k=>x.measureText(k).width+80); const tot=ws.reduce((a,b)=>a+b,0)+36*(ws.length-1); let cx=W/2-tot/2;
+    keys.forEach((k,i)=>{ const w=ws[i]; x.fillStyle="rgba(255,255,255,0.55)"; sgRound(x,cx,1190,w,96,48); x.fill(); x.fillStyle="#1A1A1A"; x.fillText(k,cx+w/2,1250); cx+=w+36; });
+    x.globalAlpha=.85; x.font="italic 400 46px 'Instrument Serif', Georgia, serif";
+    sgWrap(x, (D.seeking&&D.seeking[0])?("ты ищешь "+String(D.seeking[0]).toLowerCase()):"ты ближе, чем кажется", W/2, 1440, W-220, 60); x.globalAlpha=1;
+    x.globalAlpha=.55; x.font="400 38px Inter, sans-serif"; x.fillText("slow-glow.app", W/2, 1810); x.globalAlpha=1;
   }
   async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
   function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-эстетика.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
@@ -1791,185 +1763,6 @@ function ShareReality({ ch, D }){
       <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
       <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
       <canvas ref={ref} style={{ display:"none" }}/>
-    </div>
-  );
-}
-
-/* #1 Доска мечты → коллаж-открытка 9:16 (фото пользовательницы + её эстетика) */
-function ShareBoard({ ch, imgs, D }){
-  const ref = useRef(null);
-  const [busy,setBusy]=useState(false);
-  const pics = (imgs||[]).map(o=>o&&o.url).filter(u=>u && /^data:image/.test(u)).slice(0,4);
-  const themes = (D&&D.patterns?D.patterns:[]).slice(0,3);
-  const shareText = `Моя доска мечты по версии Slow Glow — «${ch.aes}». Собери свою → slow-glow.app`;
-  async function paint(){
-    const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
-    try{ await document.fonts.load("400 96px 'Instrument Serif'"); await document.fonts.load("500 27px Inter"); await document.fonts.ready; }catch(e){}
-    const loaded = await Promise.all(pics.map(sgLoadImg));
-    sgPaper(x,W,H); sgFrame(x,W,H,46); x.textAlign="center";
-    sgMasthead(x,W,150);
-    sgKicker(x,W,"доска мечты",300,ch.partner);
-    x.fillStyle=C.ink; x.font="italic 400 92px 'Instrument Serif', Georgia, serif"; sgWrap(x, ch.aes||"моя эстетика", W/2, 430, W-280, 92);
-    const p=80, gap=26, tile=(W-2*p-gap)/2, gy=560;
-    const fbk=[[C.oat,C.sage],[C.butter,C.coral],[C.seaMist,C.lilac],[C.sand,C.camel]];
-    for(let i=0;i<4;i++){ const r=Math.floor(i/2), c=i%2, dx=p+c*(tile+gap), dy=gy+r*(tile+gap), im=loaded[i]||null;
-      if(im) sgCoverImg(x,im,dx,dy,tile,tile,26);
-      else { x.save(); sgRound(x,dx,dy,tile,tile,26); x.clip(); const g=x.createLinearGradient(dx,dy,dx+tile,dy+tile); const fb=fbk[i%4]; g.addColorStop(0,fb[0]); g.addColorStop(1,fb[1]); x.fillStyle=g; x.fillRect(dx,dy,tile,tile); x.restore(); }
-      x.save(); x.strokeStyle="rgba(26,26,26,0.10)"; x.lineWidth=2; sgRound(x,dx,dy,tile,tile,26); x.stroke(); x.restore();
-    }
-    if(themes.length){ x.globalAlpha=0.62; x.fillStyle=C.ink; x.textAlign="center"; x.font="italic 400 40px 'Instrument Serif', Georgia, serif"; sgWrap(x, themes.join("   ·   "), W/2, gy+2*tile+gap+92, W-220, 52); x.globalAlpha=1; }
-    sgFooter(x,W,H,46);
-  }
-  async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
-  function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-доска.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
-  async function share(){ setBusy(true); sgTrack("share_board"); try{ const b=await blob(); const f=new File([b],"slow-glow.png",{type:"image/png"}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],text:shareText}); else dl(b); }catch(e){} setBusy(false); }
-  async function down(){ setBusy(true); try{ dl(await blob()); }catch(e){} setBusy(false); }
-  return (
-    <div style={{ borderRadius:18, padding:"15px 16px 16px", marginBottom:22, background:C.cream, border:`1px solid ${C.line}` }}>
-      <Label color={ch.partner}>Поделиться доской мечты</Label>
-      <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 12px", lineHeight:1.45 }}>Твои образы коллажем 9:16 — как разворот журнала. Друзья спросят «откуда это?».</p>
-      <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
-      <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
-      <canvas ref={ref} style={{ display:"none" }}/>
-    </div>
-  );
-}
-
-/* #4 Тихий список / коллекция → постер-список 9:16 */
-function ShareList({ ch, data }){
-  const ref = useRef(null);
-  const [busy,setBusy]=useState(false);
-  const acc = data.accent || ch.partner;
-  const rows = (data.blocks||[]).filter(b=>b && b.items && b.items.length && b.k && !b.kind).slice(0,5).map(b=>[b.k, b.items[0].v]);
-  const title = data.ru || data.title || "Коллекция";
-  const shareText = `«${title}» — коллекция-сценарий из Slow Glow. Ещё больше → slow-glow.app`;
-  async function paint(){
-    const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
-    try{ await document.fonts.load("400 96px 'Instrument Serif'"); await document.fonts.load("500 25px Inter"); await document.fonts.ready; }catch(e){}
-    sgPaper(x,W,H); sgFrame(x,W,H,46);
-    x.textAlign="center"; sgMasthead(x,W,150); sgKicker(x,W,"коллекция",300,acc);
-    x.fillStyle=C.ink; x.font="italic 400 94px 'Instrument Serif', Georgia, serif"; sgWrap(x, title, W/2, 430, W-260, 94);
-    if(data.sub){ x.globalAlpha=0.6; x.fillStyle=C.ink; x.font="400 32px Inter, sans-serif"; sgWrap(x, data.sub, W/2, 580, W-300, 44); x.globalAlpha=1; }
-    const p=110; let y=770; x.textAlign="left";
-    rows.forEach((r,i)=>{ x.fillStyle=acc; x.font="400 70px 'Instrument Serif', Georgia, serif"; x.fillText(String(i+1), p, y+6);
-      x.globalAlpha=0.5; x.fillStyle=C.ink; x.font="500 25px Inter, sans-serif"; x.fillText(sgSpaced(String(r[0]).toUpperCase()), p+96, y-26); x.globalAlpha=1;
-      x.fillStyle=C.ink; x.font="400 42px 'Instrument Serif', Georgia, serif"; x.fillText(sgFit(x, r[1], W-(p+96)-70), p+96, y+32);
-      y+=176; });
-    x.textAlign="center"; sgFooter(x,W,H,46);
-  }
-  async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
-  function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-коллекция.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
-  async function share(){ setBusy(true); sgTrack("share_list"); try{ const b=await blob(); const f=new File([b],"slow-glow.png",{type:"image/png"}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],text:shareText}); else dl(b); }catch(e){} setBusy(false); }
-  async function down(){ setBusy(true); try{ dl(await blob()); }catch(e){} setBusy(false); }
-  return (
-    <div style={{ borderRadius:18, padding:"15px 16px 16px", margin:"6px 0 18px", background:C.cream, border:`1px solid ${C.line}` }}>
-      <Label color={acc}>Поделиться коллекцией</Label>
-      <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 12px", lineHeight:1.45 }}>Красивый постер-список 9:16 — такие сохраняют и репостят чаще всего.</p>
-      <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
-      <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
-      <canvas ref={ref} style={{ display:"none" }}/>
-    </div>
-  );
-}
-
-/* #6 Carnet → «страница дня»: фраза + перевод открыткой 9:16 */
-function ShareCarnetPage({ ch, th, rd, lang, words }){
-  const ref = useRef(null);
-  const [busy,setBusy]=useState(false);
-  const pairs = (rd||[]).filter(r=>Array.isArray(r)&&r[0]&&r[1]);
-  const hero = pairs.find(r=>String(r[0]).length>=24 && String(r[0]).length<=110) || pairs[0] || ["",""];
-  const ws = (words||[]).filter(w=>w&&w[0]).slice(0,3).map(w=>w[0]);
-  const shareText = `Учу ${String(lang).toLowerCase()} красиво — по фразе в день в Slow Glow.${(th&&th.theme)?(" Тема: «"+th.theme+"»."):""} slow-glow.app`;
-  async function paint(){
-    const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
-    try{ await document.fonts.load("400 92px 'Instrument Serif'"); await document.fonts.load("500 27px Inter"); await document.fonts.ready; }catch(e){}
-    sgPaper(x,W,H); sgFrame(x,W,H,46); x.textAlign="center";
-    sgMasthead(x,W,150);
-    sgKicker(x,W,"carnet · "+lang,320,ch.partner);
-    x.fillStyle=C.ink; x.font="italic 400 90px 'Instrument Serif', Georgia, serif"; sgWrap(x, (th&&th.theme)||"страница дня", W/2, 470, W-280, 90);
-    sgHair(x, W/2-60, 660, W/2+60, "rgba(26,26,26,0.2)", 2);
-    x.fillStyle=C.ink; x.font="400 58px 'Instrument Serif', Georgia, serif"; sgWrap(x, hero[0], W/2, 880, W-240, 72);
-    x.globalAlpha=0.62; x.font="italic 400 42px 'Instrument Serif', Georgia, serif"; sgWrap(x, hero[1], W/2, 1140, W-280, 54); x.globalAlpha=1;
-    if(ws.length) sgPills(x, W, ws, 1360, 380);
-    sgFooter(x,W,H,46);
-  }
-  async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
-  function dl(b){ const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-carnet.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
-  async function share(){ setBusy(true); sgTrack("share_carnet"); try{ const b=await blob(); const f=new File([b],"slow-glow.png",{type:"image/png"}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],text:shareText}); else dl(b); }catch(e){} setBusy(false); }
-  async function down(){ setBusy(true); try{ dl(await blob()); }catch(e){} setBusy(false); }
-  return (
-    <div style={{ borderRadius:18, padding:"15px 16px 16px", margin:"0 0 18px", background:C.cream, border:`1px solid ${C.line}` }}>
-      <Label color={ch.partner}>Поделиться страницей дня</Label>
-      <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 12px", lineHeight:1.45 }}>Фраза дня открыткой 9:16 — тихое «учу язык красиво».</p>
-      <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю картинку…":"Поделиться в сторис"}</button>
-      <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
-      <canvas ref={ref} style={{ display:"none" }}/>
-    </div>
-  );
-}
-
-/* Фирменная заставка на вход: тёплый живой градиент (butter→coral→pink→sage) на весь экран,
-   мягко «дышит» и растворяется в приложении. Тап — пропустить. Уважает prefers-reduced-motion. */
-let sgIntroSeen = false;
-function SGSplash(){
-  const [gone, setGone] = useState(false);
-  const [out, setOut] = useState(false);
-  const [entered, setEntered] = useState(false);
-  useEffect(()=>{
-    let reduce=false; try{ reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
-    const raf = requestAnimationFrame(()=>setEntered(true));
-    const t1 = setTimeout(()=>setOut(true), reduce?600:1650);
-    const t2 = setTimeout(()=>setGone(true), reduce?1000:2380);
-    return ()=>{ cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
-  },[]);
-  if (gone) return null;
-  const skip = ()=>{ setOut(true); setTimeout(()=>setGone(true), 460); };
-  return (
-    <div onClick={skip} style={{ position:"fixed", inset:0, zIndex:9999, overflow:"hidden", cursor:"pointer",
-      background:"linear-gradient(165deg,#F7EFD8 0%,#F4ECDE 42%,#EBE5DA 100%)",
-      opacity: out?0:1, transition:"opacity 720ms ease", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div className="amb" style={{ position:"absolute", width:"92vw", height:"92vw", left:"-18vw", top:"-12vh", borderRadius:"50%",
-        background:`radial-gradient(circle at 42% 40%, ${C.butter}, ${C.coral} 54%, rgba(246,231,166,0) 76%)`, filter:"blur(44px)", opacity:0.92 }}/>
-      <div className="amb-b" style={{ position:"absolute", width:"86vw", height:"86vw", right:"-22vw", bottom:"-14vh", borderRadius:"50%",
-        background:`radial-gradient(circle at 50% 50%, ${C.pink}, ${C.lilac} 50%, rgba(242,182,198,0) 75%)`, filter:"blur(50px)", opacity:0.85 }}/>
-      <div className="amb" style={{ position:"absolute", width:"74vw", height:"74vw", left:"18vw", bottom:"-10vh", borderRadius:"50%",
-        background:`radial-gradient(circle at 50% 50%, ${C.seaMist}, ${C.sage} 55%, rgba(203,214,222,0) 74%)`, filter:"blur(54px)", opacity:0.7 }}/>
-      <div style={{ position:"relative", textAlign:"center", padding:"0 24px", opacity: out?0:(entered?1:0), transform: out?"translateY(-16px)":(entered?"translateY(0)":"translateY(14px)"), transition:"opacity 720ms ease, transform 920ms cubic-bezier(0.16,1,0.3,1)" }}>
-        <div className="floaty" style={{ fontSize:34, color:"#fff", textShadow:"0 0 24px rgba(255,255,255,0.7)", marginBottom:8, lineHeight:1 }}>✦</div>
-        <div style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:"clamp(42px,13vw,66px)", color:C.ink, lineHeight:1 }}>Slow Glow</div>
-        <div style={{ fontFamily:head, fontSize:11, letterSpacing:"0.34em", textTransform:"uppercase", color:C.inkSoft, marginTop:14 }}>заметь, что красиво</div>
-      </div>
-    </div>
-  );
-}
-
-/* Короткая инструкция после регистрации: 3 слайда — что где смотреть. Показывается один раз. */
-function IntroTour({ partner, onDone }){
-  const [i, setI] = useState(0);
-  const slides = [
-    { kicker:"Шаг 1 · Сегодня", title:"Твой день начинается здесь", body:"Место дня, ритуалы, колонка редактора и твой спокойный путь к жизни мечты — всё на вкладке «Сегодня»." },
-    { kicker:"Шаг 2 · Досуг и карта", title:"Куда пойти под твою эстетику", body:"Карта красивых мест рядом, спорт и языки, коллекции-сценарии на вечер — на вкладке «Досуг»." },
-    { kicker:"Шаг 3 · Твоя эстетика", title:"Не понимаешь, что тебя цепляет?", body:"В разделе «Я» открой Анализатор пинов: загрузи любимые сохранения — и ИИ соберёт твою эстетику и доску мечты. Возвращайся сюда, когда меняется настроение." },
-  ];
-  const last = i === slides.length-1;
-  const s = slides[i];
-  return (
-    <div style={{ position:"fixed", inset:0, zIndex:9000, background:"linear-gradient(165deg,#F7EFD8 0%,#F4ECDE 45%,#EBE5DA 100%)", display:"flex", flexDirection:"column", padding:"0 26px", boxSizing:"border-box" }}>
-      <div style={{ display:"flex", justifyContent:"flex-end", paddingTop:"calc(env(safe-area-inset-top, 0px) + 18px)" }}>
-        <button onClick={onDone} style={{ border:"none", background:"transparent", cursor:"pointer", fontFamily:head, fontSize:13, color:C.inkSoft }}>Пропустить</button>
-      </div>
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center" }}>
-        <div key={i} className="fade">
-          <GlowOrb partner={partner} size={92} spark={true} style={{ margin:"0 auto 28px" }}/>
-          <div style={{ fontFamily:head, fontSize:11, letterSpacing:"0.24em", textTransform:"uppercase", color:partner, fontWeight:600, marginBottom:14 }}>{s.kicker}</div>
-          <h2 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:32, lineHeight:1.16, color:C.ink, margin:"0 0 15px", maxWidth:340 }}>{s.title}</h2>
-          <p style={{ fontSize:15.5, lineHeight:1.6, color:C.inkSoft, margin:"0 auto", maxWidth:332 }}>{s.body}</p>
-        </div>
-      </div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:18 }}>
-        {slides.map((_,k)=>(<div key={k} style={{ width:k===i?22:7, height:7, borderRadius:99, background:k===i?partner:"rgba(26,26,26,0.15)", transition:"width 240ms ease" }}/>))}
-      </div>
-      <button onClick={()=>{ last?onDone():setI(i+1); }} style={{ width:"100%", height:54, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:16, fontWeight:500, marginBottom:"calc(env(safe-area-inset-bottom, 0px) + 26px)", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>{last?"Понятно, начать ✦":"Далее"}{!last && <ArrowRight size={18} strokeWidth={2}/>}</button>
     </div>
   );
 }
@@ -2128,7 +1921,6 @@ export default function SlowGlowApp(){
 
 function SlowGlowAppMain() {
   const [onboarded, setOnboarded] = useState(()=> sgStore.get("sg_onboarded", false));
-  const [tutorialSeen, setTutorialSeen] = useState(()=> sgStore.get("sg_tutorial", false));
   const [boards, setBoards] = useState(()=> sgStore.get("sg_boards", []));
   const [dna, setDna] = useState(null);
   useEffect(() => {
@@ -2139,6 +1931,7 @@ function SlowGlowAppMain() {
     (async () => {
       try {
         const content = imgs.map(b=>{ const m=(b.url.match(/^data:(.*?);base64,/)||[])[1]||"image/jpeg"; return { type:"image", source:{ type:"base64", media_type:m, data:b.url.split(",")[1] } }; });
+        for(let _i=0;_i<content.length;_i++){ content[_i]=await sgShrinkBlock(content[_i]); }
         content.push({ type:"text", text:'Это мудборд мечты пользовательницы — фото эстетики жизни, к которой она стремится. Разбери их вместе и верни ТОЛЬКО JSON без markdown по-русски: {"themes":[3-5 коротких повторяющихся тем или паттернов её эстетики, например «свежие цветы», «медленные завтраки у окна», «лён и нейтральная палитра»],"steps":[16 разных маленьких конкретных шагов на каждый день, которые приближают её реальную жизнь к этим образам — по одному тёплому действию, начинай с глагола, без токсичной продуктивности и без нумерации]}.' });
         const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000, system:"Ты — Slow Glow. Разбираешь визуальную эстетику по фото и превращаешь её в маленькие тёплые шаги для реальной жизни.", messages:[{ role:"user", content }] }) });
         const d = await r.json();
@@ -2152,7 +1945,6 @@ function SlowGlowAppMain() {
   const [userPlaces, setUserPlaces] = useState([]);
   const [addPlace, setAddPlace] = useState(false);
   const [mind, setMind] = useState(false);
-  const [collection, setCollection] = useState(null);
   const [wardrobe, setWardrobe] = useState([]);
   const [profile, setProfile] = useState(()=> sgStore.get("sg_profile", { name:"", age:"", city:"Москва", diet:[], skin:"", rhythm:"", pet:"" }));
   const [tab, setTab] = useState("home");
@@ -2210,8 +2002,12 @@ function SlowGlowAppMain() {
   const ch = CHAPTERS[chapterId];
 
   useEffect(() => {
-    // Шрифты подключены локально через @font-face в index.html (public/fonts/).
-    // Никаких загрузок с Google Fonts / Fontshare — приложение открывается в РФ без VPN.
+    const g = document.createElement("link"); g.rel="stylesheet";
+    g.href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap";
+    document.head.appendChild(g);
+    const f = document.createElement("link"); f.rel="stylesheet";
+    f.href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500&display=swap";
+    document.head.appendChild(f);
   }, []);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tab]);
 
@@ -2228,6 +2024,7 @@ function SlowGlowAppMain() {
 
   const capture = (e) => {
     const f = (e.target.files||[])[0]; if (!f) return;
+    let url = ""; try { url = URL.createObjectURL(f); } catch(_){}
     const id = Date.now();
     const h = new Date().getHours();
     const pool = h<11 ? ["Тёплое утро","Медленное утро","Свет нового дня","Утренний кадр"]
@@ -2235,22 +2032,18 @@ function SlowGlowAppMain() {
               : h<22 ? ["Тёплый вечер","Уютный вечер","Мягкий свет вечера","Вечерний момент"]
               :        ["Тихая ночь","Поздний кадр","Спокойствие ночи","Момент перед сном"];
     const cap = pool[id % pool.length];
-    shrinkImage(f, 1280, 0.82)
-      .then(url=>{ setMoments(m=>[{ id, url, cap, date:"только что" }, ...m]); })
-      .catch(()=>{ setMoments(m=>[{ id, url:"", cap, date:"только что" }, ...m]); });
+    setMoments(m=>[{ id, url, cap, date:"только что" }, ...m]);
     setCelebrate(true); setTimeout(()=>setCelebrate(false), 2200); setTab("journal");
   };
 
   const NAV = [
     { id:"home", icon:Home, label:"Сегодня" }, { id:"places", icon:MapPin, label:"Досуг" },
-    { id:"add", icon:Plus, label:"" }, { id:"collections", icon:BookOpen, label:"Коллекции" }, { id:"me", icon:User, label:"Я" },
+    { id:"add", icon:Plus, label:"" }, { id:"journal", icon:Heart, label:"Журнал" }, { id:"me", icon:User, label:"Я" },
   ];
 
   return (
     <div style={{ minHeight:"100dvh", width:"100%", display:"flex", alignItems:"center", justifyContent:"center", padding:"12px",
       background:"linear-gradient(165deg,#F7EFD8 0%,#F1ECE0 45%,#DCE6EA 100%)", fontFamily:body, color:C.ink, boxSizing:"border-box" }}>
-      <SGSplash/>
-      {onboarded && !tutorialSeen && <IntroTour partner={ch.partner} onDone={()=>{ setTutorialSeen(true); sgStore.set("sg_tutorial", true); }}/>}
       <style>{`
         @keyframes orbBreath{0%,100%{transform:scale(1);opacity:0.9}50%{transform:scale(1.07);opacity:1}}
         .orb{animation:orbBreath 5s ease-in-out infinite}
@@ -2305,9 +2098,6 @@ function SlowGlowAppMain() {
         .anim-grad-f{background-size:200% 200%;animation:gradShiftFast 6s ease infinite}
         @keyframes gradSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         .grad-spin{animation:gradSpin 14s linear infinite}
-        @keyframes sgWordIn{0%{opacity:0;transform:translateY(12px) scale(0.985);filter:blur(7px)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
-        @keyframes greetRise{0%{opacity:0;transform:translateY(16px)}100%{opacity:1;transform:translateY(0)}}
-        .greet-in{animation:greetRise 1000ms cubic-bezier(0.16,1,0.3,1) both;animation-delay:1.25s}
         @keyframes sproutGrow{0%{transform:scaleY(0) translateY(8px);opacity:0}60%{transform:scaleY(1.05) translateY(0);opacity:1}100%{transform:scaleY(1) translateY(0);opacity:1}}
         .sprout{transform-origin:bottom center;animation:sproutGrow 1100ms cubic-bezier(0.16,1,0.3,1) both}
         @keyframes leafPop{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
@@ -2369,24 +2159,18 @@ function SlowGlowAppMain() {
                 <div style={{ fontFamily:head, fontSize:13, letterSpacing:"0.36em", fontWeight:500, color:C.ink }}>SLOW GLOW</div>
                 <div style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.34em", color:C.inkFaint, marginTop:3 }}>LIVE BEAUTIFULLY</div>
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:2 }}>
-                <button onClick={()=>setTab("journal")} aria-label="Журнал" style={{ border:"none", background:"transparent", cursor:"pointer", padding:6, display:"flex", alignItems:"center" }}>
-                  <Clock size={20} strokeWidth={1.7} color={tab==="journal"?ch.partner:C.inkFaint}/>
-                </button>
-                <button onClick={()=>setSavedOpen(true)} aria-label="Сохранённое" style={{ position:"relative", border:"none", background:"transparent", cursor:"pointer", padding:6, display:"flex", alignItems:"center" }}>
-                  <Heart size={20} strokeWidth={1.7} color={saved.length?ch.partner:C.inkFaint} fill={saved.length?ch.partner:"none"}/>
-                  {saved.length>0 && <span style={{ position:"absolute", top:-1, right:-1, minWidth:15, height:15, padding:"0 3px", borderRadius:99, background:C.ink, color:C.cream, fontFamily:head, fontSize:9, display:"flex", alignItems:"center", justifyContent:"center" }}>{saved.length}</span>}
-                </button>
-              </div>
+              <button onClick={()=>setSavedOpen(true)} aria-label="Сохранённое" style={{ position:"relative", border:"none", background:"transparent", cursor:"pointer", padding:6, display:"flex", alignItems:"center" }}>
+                <Heart size={20} strokeWidth={1.7} color={saved.length?ch.partner:C.inkFaint} fill={saved.length?ch.partner:"none"}/>
+                {saved.length>0 && <span style={{ position:"absolute", top:-1, right:-1, minWidth:15, height:15, padding:"0 3px", borderRadius:99, background:C.ink, color:C.cream, fontFamily:head, fontSize:9, display:"flex", alignItems:"center", justifyContent:"center" }}>{saved.length}</span>}
+              </button>
             </div>
 
             <div ref={scrollRef} className="sg-scroll" style={{ position:"relative", zIndex:2, flex:1, overflowY:"auto", padding:"6px 24px 100px" }}>
               <div key={tab} className="screen">
-                {tab==="home" && <Home_ ch={ch} profile={profile} dna={dna} earlyAccess={earlyAccess} setRubric={setRubric} setPin={setPinOpen} setDetail={setDetail} premium={premium} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openMind={()=>setMind(true)} openCollection={()=>setCollection(capsuleById("french-summer"))} openLibrary={()=>setTab("collections")} onLive={(label)=>{ setMoments(m=>[{ id:Date.now(), t:(Date.now()%6), cap:label, date:"сегодня" }, ...m]); setCelebrate(true); setTimeout(()=>setCelebrate(false),2000); }} />}
+                {tab==="home" && <Home_ ch={ch} profile={profile} dna={dna} earlyAccess={earlyAccess} setRubric={setRubric} setPin={setPinOpen} setDetail={setDetail} premium={premium} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openMind={()=>setMind(true)} onLive={(label)=>{ setMoments(m=>[{ id:Date.now(), t:(Date.now()%6), cap:label, date:"сегодня" }, ...m]); setCelebrate(true); setTimeout(()=>setCelebrate(false),2000); }} />}
                 {tab==="places" && <Places_ profile={profile} partner={ch.partner} chId={ch.id} userPlaces={userPlaces} openAddPlace={()=>setAddPlace(true)} onEditPlace={(p)=>setAddPlace(p)} onDeletePlace={(id)=>setUserPlaces(prev=>prev.filter(x=>x.id!==id))} setDetail={setDetail} premium={premium} openScan={()=>premium?setScan(true):setPaywall("scan")} openSport={()=>setSport(true)} openLang={()=>setLang(true)} openPets={()=>setPets(true)} openMind={()=>setMind(true)} toggleSave={toggleSave} isSaved={isSaved} />}
                 {tab==="journal" && <Journal_ moments={moments} />}
                 {tab==="me" && <Me_ ch={ch} chapterId={chapterId} boards={boards} earlyAccess={earlyAccess} setChapterId={setChapterId} setPin={setPinOpen} setWorld={setWorld} premium={premium} grantTrial={grantTrial} trialActive={trialActive} trialDaysLeft={trialDaysLeft} openPlus={()=>setPaywall("plus")} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openStylist={()=>premium?setStylist(true):setPaywall("stylist")} openScan={()=>premium?setScan(true):setPaywall("scan")} />}
-                {tab==="collections" && <Collections_ ch={ch} onOpen={(c)=>setCollection(c)} />}
               </div>
             </div>
 
@@ -2424,7 +2208,6 @@ function SlowGlowAppMain() {
         {pinOpen && <PinReality ch={ch} dna={dna} onClose={()=>setPinOpen(false)} />}
         {addPlace && <AddPlace ch={ch} city={profile.city} editing={addPlace===true?null:addPlace} onClose={()=>setAddPlace(false)} onSave={(p)=>{ setUserPlaces(prev=> prev.some(x=>x.id===p.id) ? prev.map(x=>x.id===p.id?p:x) : [p,...prev]); setAddPlace(false); }} />}
         {mind && <MindView ch={ch} onClose={()=>setMind(false)} toggleSave={toggleSave} isSaved={isSaved} />}
-        {collection && <CollectionView ch={ch} data={collection} city={profile.city} onClose={()=>setCollection(null)} />}
         {savedOpen && <SavedView saved={saved} ch={ch} toggleSave={toggleSave} onClose={()=>setSavedOpen(false)} />}
         {world && <WorldDetail name={world} onClose={()=>setWorld(null)} />}
         {detail && (detail.recipe
@@ -2504,7 +2287,7 @@ function Onboarding({ profile, setProfile, onDone }) {
     const to = setTimeout(()=>setStep(7), 2900);
     return ()=>{ clearInterval(iv); clearTimeout(to); };
   }, [step]);
-  const onFiles = (e) => { const fs = Array.from(e.target.files||[]); fs.forEach(f=>{ shrinkImage(f,1280,0.82).then(url=>{ if(url){ setPins(p=>[...p,{ url }]); setExamples(false); } }); }); };
+  const onFiles = (e) => { const fs = Array.from(e.target.files||[]); fs.forEach(f=>{ const r=new FileReader(); r.onload=()=>{ setPins(p=>[...p,{ url:r.result }]); setExamples(false); }; r.readAsDataURL(f); }); };
   const partner = CHAPTERS[pickId].partner;
   const collage = pins.length>0 ? pins : [3,1,4,2,0,5].map(t=>({ t }));
   const canNext =
@@ -2534,7 +2317,7 @@ function Onboarding({ profile, setProfile, onDone }) {
             </button>
             {pins.length===0 && !examples && <button onClick={()=>setExamples(true)} style={{ display:"block", margin:"0 auto 8px", border:"none", background:"transparent", color:C.inkSoft, fontSize:13, textDecoration:"underline", cursor:"pointer", fontFamily:body }}>Показать на примере</button>}
             <div style={{ columnCount:2, columnGap:10, marginTop:10 }}>
-              {!examples && pins.map((p,i)=><div key={i} className="col-in" style={{ width:"100%", marginBottom:10, breakInside:"avoid", borderRadius:16, overflow:"hidden", boxShadow:"0 14px 30px -20px rgba(26,26,26,0.4)", animationDelay:`${i*0.08}s` }}><img src={p.url} alt="" loading="lazy" decoding="async" style={{ width:"100%", display:"block" }}/></div>)}
+              {!examples && pins.map((p,i)=><div key={i} className="col-in" style={{ width:"100%", marginBottom:10, breakInside:"avoid", borderRadius:16, overflow:"hidden", boxShadow:"0 14px 30px -20px rgba(26,26,26,0.4)", animationDelay:`${i*0.08}s` }}><img src={p.url} alt="" style={{ width:"100%", display:"block" }}/></div>)}
               {examples && [3,1,4,2,0,5].map((t,i)=><div key={i} className="col-in" style={{ width:"100%", marginBottom:10, breakInside:"avoid", height:[140,110,126,140,112,132][i], borderRadius:16, background:PH[t], boxShadow:"0 14px 30px -20px rgba(26,26,26,0.4)", animationDelay:`${i*0.08}s` }}/>)}
             </div>
           </div>
@@ -2624,7 +2407,7 @@ function Onboarding({ profile, setProfile, onDone }) {
                     <div className={col===0?"mq-up":"mq-down"} style={{ display:"flex", flexDirection:"column", gap:10 }}>
                       {loop.map((p,i)=>(
                         <div key={i} style={{ width:"100%", borderRadius:16, overflow:"hidden", boxShadow:"0 16px 34px -22px rgba(26,26,26,0.45)" }}>
-                          {p.url ? <img src={p.url} alt="" loading="lazy" decoding="async" style={{ width:"100%", display:"block" }}/> : <div style={{ height:[150,112,134,150,116,138][i%6], background:PH[p.t] }}/>}
+                          {p.url ? <img src={p.url} alt="" style={{ width:"100%", display:"block" }}/> : <div style={{ height:[150,112,134,150,116,138][i%6], background:PH[p.t] }}/>}
                         </div>
                       ))}
                     </div>
@@ -2729,111 +2512,24 @@ function BeautifulDay({ ch }) {
     </div>
   );
 }
-/* ── КОЛОНКА РЕДАКТОРА ─────────────────────────────────────────────
-   Короткая еженедельная рубрика от Дарьи. Показывается самый первый объект.
-   Чтобы обновить на новую неделю: добавь НОВЫЙ объект В НАЧАЛО массива.
-   Поля: date — короткая метка недели/дата; title — одна мысль (курсив);
-   body — 2–4 коротких предложения; sign — подпись. Держи текст коротким. */
-const EDITOR_NOTES = [
-  {
-    date: "Начало июля",
-    intro: "Кажется, жизнь запоминается не большими событиями, а маленькими кадрами. Поэтому этим летом я всё чаще беру с собой плёночную камеру — чтобы сохранить не идеальный момент, а настоящий: солнечный свет на стене, пустую улицу утром, чашку кофе, чей-то смех. Именно из таких деталей потом складывается ощущение счастья.",
-    blocks: [
-      { k:"Новое место недели", title:"Пешка", body:"Новое французское бистро и шахматный клуб в Москве. Здесь можно заказать бокал вина, сыграть партию в шахматы и провести вечер без спешки.", addr:"Рождественский бульвар, 10/7с1", map:"Пешка бистро Рождественский бульвар 10 Москва" },
-      { k:"Смотреть", title:"Уимблдон", body:"Уимблдон сейчас в самом разгаре. Даже если ты не следишь за теннисом, включи хотя бы один вечерний матч: белая форма, зелёные корты и ощущение английского лета, которое хочется растянуть подольше." },
-      { k:"Книга недели", title:"Вирджиния Вулф — «Волны»", body:"Один из самых красивых романов XX века о времени, памяти и человеческой жизни. Его не хочется читать быстро — лучше по несколько страниц, словно слушая шум моря.", link:["Найти на LiveLib","https://www.livelib.ru/find/books/Волны+Вирджиния+Вулф"] },
-    ],
-    sign: "Дарья, куратор Slow Glow",
-  },
-];
-function EditorColumn({ partner }){
-  const note = (typeof EDITOR_NOTES!=="undefined" && EDITOR_NOTES.length) ? EDITOR_NOTES[0] : null;
-  if (!note) return null;
-  const blocks = note.blocks || [];
-  const lead = note.intro || note.body;
-  return (
-    <div style={{ borderRadius:20, padding:"18px 20px 20px", marginBottom:26, background:C.cream, border:`1px solid ${C.line}` }}>
-      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:11 }}>
-        <span style={{ fontFamily:head, fontSize:10, letterSpacing:"0.22em", textTransform:"uppercase", color:partner, fontWeight:600 }}>Колонка редактора</span>
-        {note.date && <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.12em", textTransform:"uppercase", color:C.inkFaint }}>{note.date}</span>}
-      </div>
-      <div style={{ height:1, background:C.line, margin:"0 0 14px" }}/>
-      {lead && (
-        <div>
-          <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.2em", textTransform:"uppercase", color:C.inkFaint, marginBottom:8 }}>От редактора</div>
-          {note.title && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:21, lineHeight:1.3, color:C.ink, margin:"0 0 8px" }}>{note.title}</p>}
-          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, lineHeight:1.55, color:C.ink, margin:0 }}>{lead}</p>
-        </div>
-      )}
-      {blocks.map((b,i)=>(
-        <div key={i}>
-          <div style={{ height:1, background:C.line, margin:"16px 0 13px" }}/>
-          {b.k && <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.2em", textTransform:"uppercase", color:partner, marginBottom:6 }}>{b.k}</div>}
-          {b.title && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, lineHeight:1.25, color:C.ink, margin:"0 0 6px" }}>{b.title}</p>}
-          {b.body && <p style={{ fontSize:14, lineHeight:1.6, color:C.inkSoft, margin:0 }}>{b.body}</p>}
-          {b.addr && (
-            <a href={"https://yandex.ru/maps/?text="+encodeURIComponent(b.map||b.addr)} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:9, fontFamily:head, fontSize:12, color:partner, textDecoration:"none" }}>
-              <MapPin size={13} strokeWidth={1.8}/> {b.addr}
-            </a>
-          )}
-          {b.link && (
-            <a href={b.link[1]} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:9, fontFamily:head, fontSize:12, color:partner, textDecoration:"none" }}>
-              {b.link[0]} <ArrowRight size={13} strokeWidth={2}/>
-            </a>
-          )}
-        </div>
-      ))}
-      <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:16 }}>
-        <span style={{ color:partner }}>✦</span>
-        <span style={{ fontFamily:serif, fontStyle:"italic", fontSize:14, color:C.inkFaint }}>{note.sign || "Дарья, куратор Slow Glow"}</span>
-      </div>
-    </div>
-  );
-}
-
-function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, premium, openTravel, openLive, openMind, openCollection, openLibrary, onLive }) {
-  const introNow = useState(()=>{ if (sgIntroSeen) return false; sgIntroSeen = true; return true; })[0];
+function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, premium, openTravel, openLive, openMind, onLive }) {
   const items = pick(todayFor(ch.id), 4, 0);
   const dnaSteps = dna && dna.steps && dna.steps.length ? dna.steps : null;
   const step = dnaSteps ? pick(dnaSteps, 1, 2)[0] : pick(stepFor(ch.id), 1, 2)[0];
   const identity = ({ summer:"спокойной, светлой и уверенной женщины в эстетике French Summer", romance:"нежной, романтичной и уверенной женщины в эстетике Romantic Bloom", coastal:"свободной, лёгкой и спокойной женщины в эстетике Coastal Living", slow:"спокойной, тёплой и наполненной женщины в эстетике Slow Living" })[ch.id] || "спокойной и уверенной женщины в своей эстетике";
   return (
     <div>
-      <div className={introNow?"greet-in":""}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <Label>Твой сезон</Label>
         <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:C.inkFaint }}>{new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long"})}</span>
       </div>
-      <div style={{ position:"relative", marginTop:10, marginBottom:10, minHeight:96 }}>
+      <div style={{ position:"relative", marginTop:6, marginBottom:8, minHeight:96 }}>
         <GlowOrb partner={ch.partner} size={96} style={{ position:"absolute", right:0, top:-2, zIndex:0 }}/>
         <h1 style={{ position:"relative", zIndex:1, fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:40, lineHeight:1.05, margin:0, color:C.ink, maxWidth:"66%" }}>
           {ch.name.split(" ")[0]}<br/>{ch.name.split(" ")[1]}
         </h1>
       </div>
-      <p style={{ fontSize:15, lineHeight:1.6, color:C.inkSoft, margin:"6px 0 28px" }}>Доброе утро{profile.name?`, ${profile.name}`:""}. Несколько способов сегодня прожить твою эстетику.</p>
-      </div>
-      <EditorColumn partner={ch.partner}/>
-      {openLibrary && (
-        <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", margin:"2px 0 10px" }}>
-          <Label>Коллекции</Label>
-          <button onClick={openLibrary} style={{ border:"none", background:"transparent", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:11, letterSpacing:"0.06em", color:ch.partner }}>Смотреть все <ArrowRight size={14} strokeWidth={2}/></button>
-        </div>
-      )}
-      {openCollection && (()=>{ const cap=capsuleById("french-summer"); return (
-        <button onClick={openCollection} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", padding:0, borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:26, boxShadow:`0 18px 40px -26px ${ch.partner}` }}>
-          <Photo t={0} url={cap.cover} h={196} radius={0}>
-            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.10) 0%, transparent 34%, rgba(26,26,26,0.64) 100%)" }}/>
-          </Photo>
-          <span style={{ position:"absolute", top:12, left:12, background:`linear-gradient(135deg, ${C.butter}, ${ch.partner})`, borderRadius:99, padding:"5px 12px", fontFamily:head, fontSize:9.5, letterSpacing:"0.12em", color:C.ink }}>КОЛЛЕКЦИЯ НЕДЕЛИ</span>
-          <div style={{ position:"absolute", left:16, right:16, bottom:14 }}>
-            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:27, color:"#fff", lineHeight:1.08, textShadow:"0 2px 12px rgba(26,26,26,0.5)" }}>{cap.title}</div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginTop:5 }}>
-              <span style={{ fontSize:12.5, color:"rgba(255,255,255,0.92)", lineHeight:1.3 }}>{cap.sub}</span>
-              <ArrowRight size={18} strokeWidth={2} color="#fff" style={{ flexShrink:0 }}/>
-            </div>
-          </div>
-        </button>
-      ); })()}
+      <p style={{ fontSize:14.5, lineHeight:1.6, color:C.inkSoft, margin:"4px 0 14px" }}>Доброе утро{profile.name?`, ${profile.name}`:""}. Сегодня — способы прожить твою эстетику {ch.aes}.</p>
       <BeautifulDay ch={ch} />
       {earlyAccess && (
         <div style={{ position:"relative", overflow:"hidden", borderRadius:18, padding:"14px 16px", marginBottom:16, background:`linear-gradient(120deg, ${C.butter}, ${ch.partner} 70%, ${C.oat})`, boxShadow:`0 16px 34px -24px ${ch.partner}`, border:"1px solid rgba(255,255,255,0.5)" }}>
@@ -2843,7 +2539,7 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
             <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"#1A1A1A", fontWeight:600 }}>Ранний доступ · Slow Glow Plus</span>
           </div>
           <p style={{ position:"relative", fontFamily:serif, fontStyle:"italic", fontSize:18, lineHeight:1.32, color:"#1A1A1A", margin:0 }}>Весь премиум открыт тебе бесплатно — пока для первых.</p>
-          <p style={{ position:"relative", fontSize:12.5, lineHeight:1.45, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>Обычно это Plus. Сейчас — твой подарок как одной из первых ✦</p>
+          <p style={{ position:"relative", fontSize:12.5, lineHeight:1.45, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>AI-консьерж, стилист, путешествия, языки и подбор мест — обычно это Plus. Сейчас это твой подарок как одной из первых ✦</p>
         </div>
       )}
       <DailyRitual ch={ch} onLive={onLive}/>
@@ -2859,12 +2555,12 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
 
       <PullQuote>{pickOne(QUOTES, 5)}</PullQuote>
 
-      <div className="anim-grad" style={{ borderRadius:20, padding:"18px 20px", marginBottom:22, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 65%, ${C.oat})`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
+      <div className="anim-grad" style={{ borderRadius:20, padding:"18px 20px", marginBottom:14, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 65%, ${C.oat})`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
         <Label color="rgba(26,26,26,0.5)">Кем ты становишься</Label>
         <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:20, lineHeight:1.35, color:C.ink, margin:"8px 0 0" }}>Ты создаёшь жизнь {identity}.</p>
       </div>
 
-      <div style={{ borderRadius:20, padding:"18px 20px", marginBottom:22, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
+      <div style={{ borderRadius:20, padding:"18px 20px", marginBottom:14, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
           <Label color={C.inkFaint}>Твой путь к жизни мечты</Label>
           <span style={{ fontFamily:head, fontSize:9, letterSpacing:"0.12em", color:C.inkFaint }}>БЕЗ ГОНКИ</span>
@@ -3019,133 +2715,42 @@ function NearbyMap({ city, partner }) {
     </div>
   );
 }
-/* Поисковые запросы для «Отобранных мест» — чтобы карта открывала
-   похожее место рядом с городом пользователя, а не один адрес в Москве. */
-const PLACE_Q = {
-  "Утренний кофе":"кофейня с террасой",
-  "Чтобы почитать":"тихое уютное кафе",
-  "Ощущение отпуска":"кафе с верандой",
-  "Вечерний бокал":"винный бар",
-  "Букет себе":"цветочный магазин",
-  "Медленный обед":"траттория",
-};
-const MAP_PLACES = [
-  { k:"Кофейни с террасой", q:"кофейня с террасой", icon:"cup" },
-  { k:"Книжные с кофе", q:"книжный магазин кофейня", icon:"book" },
-  { k:"Винотеки и бары", q:"винный бар", icon:"candle" },
-  { k:"Спешелти-кофе", q:"спешелти кофейня", icon:"spark" },
-  { k:"Цветочные", q:"цветочный магазин", icon:"flower" },
-  { k:"Камерные чайные", q:"чайная", icon:"cup" },
-];
-const MAP_LEISURE = [
-  { k:"Галереи и выставки", q:"галерея современного искусства", icon:"spark" },
-  { k:"Гончарные студии", q:"гончарная мастерская", icon:"flower" },
-  { k:"Йога-студии", q:"йога студия", icon:"leaf" },
-  { k:"Артхаус-кино", q:"кинотеатр авторское кино", icon:"spark" },
-  { k:"Винные дегустации", q:"винотека дегустация", icon:"candle" },
-  { k:"Концертные залы", q:"концертный зал", icon:"wave" },
-  { k:"Антикафе и лекции", q:"антикафе", icon:"book" },
-];
-const MAP_ROUTES = [
-  { k:"Набережная", q:"набережная", icon:"wave", d:"3–5 км · ровно и красиво" },
-  { k:"Парк по кругу", q:"парк", icon:"leaf", d:"2–4 км · мягкий круг" },
-  { k:"Лесопарк", q:"лесопарк", icon:"leaf", d:"мягкая земля для бега" },
-  { k:"Эко-тропа", q:"экотропа", icon:"leaf", d:"тихо и медленно" },
-  { k:"Ботанический сад", q:"ботанический сад", icon:"flower", d:"шаг для созерцания" },
-  { k:"Вдоль воды", q:"озеро парк", icon:"wave", d:"вода рядом всю дорогу" },
-];
-const MAP_TABS = [
-  { id:0, label:"Места", badge:"Места подобраны Slow Glow", note:"Самые красивые места рядом — отобраны под твою эстетику." },
-  { id:1, label:"Досуг", badge:"Досуг подобран Slow Glow", note:"Куда пойти за впечатлением — выставки, студии, кино, дегустации." },
-  { id:2, label:"Маршруты", badge:"Маршруты от Slow Glow", note:"Где медленно гулять и легко бегать — ровно, зелено и красиво." },
-];
-const ROUTE_PLANS = [
-  { k:"Набережная-петля", q:"набережная", icon:"wave", surface:"асфальт", dist:5.2, gain:24, mins:62, vibe:"Ровно, открыто, вода всю дорогу — идеально для первого забега.", elev:[2,3,3,4,6,5,4,3,4,5,4,3,2] },
-  { k:"Парк по кругу", q:"парк", icon:"leaf", surface:"дорожки", dist:3.4, gain:38, mins:42, vibe:"Тень, скамейки и мягкий круг — можно идти, можно бежать.", elev:[5,6,8,10,9,7,8,11,9,7,6,5] },
-  { k:"Лесной трейл", q:"лесопарк", icon:"leaf", surface:"грунт", dist:6.8, gain:96, mins:84, vibe:"Мягкая земля, хвоя и тишина — бережно к коленям, хорошо для длинных.", elev:[10,14,20,28,34,30,36,42,38,30,22,16,12] },
-  { k:"Городская прогулка", q:"исторический центр", icon:"pin", surface:"тротуар", dist:4.1, gain:30, mins:55, vibe:"Медленный шаг по красивым улицам — кофе в начале, кофе в конце.", elev:[6,7,9,8,10,12,11,9,8,7,6,7] },
-  { k:"Эко-тропа", q:"экотропа", icon:"leaf", surface:"настил", dist:2.6, gain:18, mins:34, vibe:"Деревянный настил, птицы и вода — самый медитативный вариант.", elev:[3,4,5,5,6,5,4,5,6,5,4,3] },
-  { k:"Холмистый забег", q:"парк холмы", icon:"sun", surface:"асфальт и грунт", dist:7.5, gain:165, mins:78, vibe:"Набор высоты и виды сверху — для тех, кто хочет нагрузку и награду.", elev:[8,16,30,48,70,90,110,95,70,50,34,20,10] },
-];
-function elevPath(arr, w, h, pad){
-  const max=Math.max.apply(null,arr), min=Math.min.apply(null,arr), span=(max-min)||1, n=arr.length;
-  const X=i=> pad + (w-2*pad)*(i/(n-1));
-  const Y=v=> (h-pad) - (h-2*pad)*((v-min)/span);
-  let line=`M ${X(0).toFixed(1)} ${Y(arr[0]).toFixed(1)}`;
-  for(let i=1;i<n;i++) line+=` L ${X(i).toFixed(1)} ${Y(arr[i]).toFixed(1)}`;
-  const area=line+` L ${X(n-1).toFixed(1)} ${(h-pad).toFixed(1)} L ${X(0).toFixed(1)} ${(h-pad).toFixed(1)} Z`;
-  return { line, area };
-}
-// Вставь сюда бесплатный API-ключ OpenRouteService — и маршруты станут настоящими
-// (реальная нитка по карте + точная дистанция и набор высоты, построенные от твоего местоположения).
-const ORS_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBmZGQ2ZGRhM2FmNDQ5N2U5ZmRjMjc5ZDJiYWUwOWZkIiwiaCI6Im11cm11cjY0In0=";
-// Нормализует полилинию маршрута (массив [lng,lat]) в SVG-путь внутри рамки w×h.
-function linePath(coords, w, h, pad){
-  const xs=coords.map(c=>c[0]), ys=coords.map(c=>c[1]);
-  const minx=Math.min.apply(null,xs), maxx=Math.max.apply(null,xs);
-  const miny=Math.min.apply(null,ys), maxy=Math.max.apply(null,ys);
-  const sx=(maxx-minx)||1, sy=(maxy-miny)||1;
-  const s=Math.min((w-2*pad)/sx,(h-2*pad)/sy);
-  const offx=(w-sx*s)/2, offy=(h-sy*s)/2;
-  const X=x=> offx+(x-minx)*s, Y=y=> h-(offy+(y-miny)*s);
-  let d=`M ${X(coords[0][0]).toFixed(1)} ${Y(coords[0][1]).toFixed(1)}`;
-  for(let i=1;i<coords.length;i++) d+=` L ${X(coords[i][0]).toFixed(1)} ${Y(coords[i][1]).toFixed(1)}`;
-  return d;
-}
-function sampleArr(arr, n){
-  if(!arr || arr.length<=n) return arr||[];
-  const step=(arr.length-1)/(n-1), out=[];
-  for(let i=0;i<n;i++) out.push(arr[Math.round(i*step)]);
-  return out;
-}
 function Places_({ profile, partner, chId, userPlaces, openAddPlace, onEditPlace, onDeletePlace, setDetail, premium, openScan, openSport, openLang, openMind, openPets, toggleSave, isSaved }) {
-  const city = profile.city || "Москва";
-  const ymaps = (term) => "https://yandex.ru/maps/?text=" + encodeURIComponent(term + " " + city);
-  const [mapTab, setMapTab] = useState(0);
-  const [mapPick, setMapPick] = useState(0);
-  const picks = [MAP_PLACES, MAP_LEISURE, MAP_ROUTES][mapTab];
-  const mq = picks[mapPick] || picks[0];
-  const mapSrc = "https://yandex.ru/map-widget/v1/?mode=search&text=" + encodeURIComponent(mq.q + " " + city) + "&z=12";
-  const [liveRoute, setLiveRoute] = useState(null);   // { key, dist, ascent, elArr, mapD }
-  const [routeBusy, setRouteBusy] = useState("");
-  const [routeErr, setRouteErr] = useState("");
-  function buildRoute(r){
-    if (!ORS_KEY) return;
-    if (!navigator.geolocation) { setRouteErr("Геолокация недоступна на этом устройстве"); return; }
-    setRouteBusy(r.k); setRouteErr("");
-    navigator.geolocation.getCurrentPosition((pos)=>{
-      const { latitude:lat, longitude:lng } = pos.coords;
-      const body = { coordinates:[[lng,lat]], elevation:true, instructions:false,
-        options:{ round_trip:{ length:Math.round(r.dist*1000), points:5, seed:1 } } };
-      fetch("https://api.openrouteservice.org/v2/directions/foot-walking/geojson", {
-        method:"POST",
-        headers:{ "Authorization":ORS_KEY, "Content-Type":"application/json" },
-        body:JSON.stringify(body)
-      }).then(res=>res.json()).then(d=>{
-        const f = d && d.features && d.features[0];
-        if (!f || !f.geometry || !f.geometry.coordinates) throw new Error("no route");
-        const coords = f.geometry.coordinates;
-        const dist = (f.properties && f.properties.summary ? f.properties.summary.distance : 0)/1000;
-        const ascent = f.properties ? f.properties.ascent : null;
-        const eles = coords.map(c=>c[2]).filter(v=>typeof v==="number");
-        setLiveRoute({ key:r.k, dist, ascent, elArr:sampleArr(eles,16), mapD:linePath(sampleArr(coords,120),260,150,10) });
-        setRouteBusy("");
-      }).catch(()=>{ setRouteErr("Не удалось построить маршрут — попробуй ещё раз"); setRouteBusy(""); });
-    }, ()=>{ setRouteErr("Разреши доступ к геолокации, чтобы построить маршрут рядом"); setRouteBusy(""); }, { enableHighAccuracy:false, timeout:9000, maximumAge:60000 });
-  }
-  const hobbies = pick(leisureFor(chId), 3, 9);   // три занятия на сегодня
-  const ideas = shuffleDay(nicheFor(chId), 2);    // вечерние сценарии под эстетику
+  const [q, setQ] = useState("");
+  const [allHob, setAllHob] = useState(false);
+  const places = pick(PLACE_POOL, 3, 3);
+  const leisure = pick(leisureFor(chId), 3, 1);
+  const events = pick(EVENTS, 3, 2);
+  const norm = s => s.toLowerCase().replace(/ё/g,"е");
+  const ql = norm(q.trim());
+  // full searchable index across all pools
+  const index = [
+    ...PLACE_POOL.map(p=>({ item:p, label:p.name, sub:p.sc, kind:"Место" })),
+    ...LEISURE.map(l=>({ item:l, label:l.v, sub:l.note, kind:l.air?"Досуг · на воздухе":"Досуг · дома" })),
+    ...EVENTS.map(e=>({ item:e, label:e.v, sub:e.k, kind:"Событие" })),
+  ];
+  const found = ql ? index.filter(x=> norm(x.label+" "+(x.sub||"")+" "+x.kind).includes(ql)) : [];
   return (
     <div>
       <Label>Досуг</Label>
       <div style={{ display:"flex", alignItems:"center", gap:6, margin:"6px 0 4px" }}>
-        <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:34, margin:0, color:C.ink }}>{city}</h1>
+        <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:34, margin:0, color:C.ink }}>{profile.city||"Москва"}</h1>
       </div>
-      <p style={{ fontSize:13.5, color:C.inkSoft, margin:"0 0 18px", lineHeight:1.5 }}>Не нужно ничего искать в общем списке — мы уже отобрали самые красивые места и занятия под твою эстетику.</p>
+      <p style={{ fontSize:13.5, color:C.inkSoft, margin:"0 0 16px" }}>Места, занятия и события под твою эстетику</p>
+      <NearbyMap city={profile.city} partner={partner} />
+      <div style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(255,255,255,0.85)", border:`1px solid ${C.line}`, borderRadius:99, padding:"4px 8px 4px 16px", marginBottom:18 }}>
+        <Search size={17} strokeWidth={1.7} color={C.inkSoft}/>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Найди место, занятие или событие…" style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:14, fontFamily:body, color:C.ink, padding:"8px 0" }}/>
+        {q && <button onClick={()=>setQ("")} aria-label="Очистить" style={{ border:"none", background:"rgba(26,26,26,0.06)", borderRadius:99, width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:C.inkSoft, flexShrink:0 }}><X size={15} strokeWidth={2}/></button>}
+      </div>
 
-      {/* Быстрые входы наверху — спорт, языки, забота (чтобы не листать до низа) */}
-      <div style={{ margin:"2px 0 10px" }}><Label color={C.inkFaint}>Под твою эстетику</Label></div>
-      <div style={{ display:"flex", gap:8 }}>
+      <button onClick={openScan} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", gap:13, marginBottom:20, borderRadius:18, background:premium?`linear-gradient(120deg, ${C.butter}, ${partner})`:"rgba(255,255,255,0.6)", border:premium?"none":`1px solid ${C.line}`, padding:"14px 16px", cursor:"pointer" }}>
+        <GlowOrb partner={partner} size={36} spark={false}/>
+        <div style={{ flex:1 }}><Label color={premium?"rgba(26,26,26,0.55)":C.inkFaint}>Подбор места{premium?"":" · Plus"}</Label><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, marginTop:2 }}>Опиши настроение — найду место</div></div>
+        <ArrowRight size={19} strokeWidth={1.7} color={C.ink}/>
+      </button>
+
+      <div style={{ display:"flex", gap:8, marginBottom:22 }}>
         <button onClick={openSport} className="pop" style={{ flex:1, textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", borderRadius:16, padding:"13px 13px", cursor:"pointer" }}>
           <Label color={C.inkFaint}>Каждый день</Label>
           <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, margin:"3px 0 2px", display:"flex", alignItems:"center", gap:7 }}><BrandIcon name="wave" size={17} color={partner}/>Спорт</div>
@@ -3157,229 +2762,157 @@ function Places_({ profile, partner, chId, userPlaces, openAddPlace, onEditPlace
           <p style={{ fontSize:11.5, color:C.inkSoft, margin:0, lineHeight:1.3 }}>уроки по неделям</p>
         </button>
       </div>
-      {profile.pet && profile.pet!=="Нет" && (<button onClick={openPets} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", gap:13, marginTop:12, borderRadius:18, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, padding:"14px 16px", cursor:"pointer" }}>
+
+      {profile.pet && profile.pet!=="Нет" && (<button onClick={openPets} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", gap:13, marginBottom:22, borderRadius:18, background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, padding:"14px 16px", cursor:"pointer" }}>
         <GlowOrb partner={partner} size={36} spark={false}/>
         <div style={{ flex:1 }}><Label color={C.inkFaint}>Для тех, у кого есть питомец</Label><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, marginTop:2 }}>Питомцы — забота и радость</div><p style={{ fontSize:11.5, color:C.inkSoft, margin:"2px 0 0", lineHeight:1.3 }}>маршруты · мероприятия · психология · игрушки</p></div>
         <ArrowRight size={19} strokeWidth={1.7} color={C.ink}/>
       </button>)}
-      <div style={{ height:1, background:C.line, margin:"20px 0 24px" }}/>
 
-      {/* Карта Slow Glow — точные эстетичные места рядом */}
-      <div style={{ marginBottom:26 }}>
-        <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, margin:"0 0 4px" }}>
-          <Label>Карта Slow Glow</Label>
-          <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", color:C.inkFaint }}>ТОЧНО ПОД ЭСТЕТИКУ</span>
-        </div>
-        <div style={{ display:"flex", gap:6, background:"rgba(255,255,255,0.5)", border:`1px solid ${C.line}`, borderRadius:99, padding:4, margin:"0 0 10px" }}>
-          {MAP_TABS.map(t=>{
-            const on=mapTab===t.id;
-            return (
-              <button key={t.id} onClick={()=>{ setMapTab(t.id); setMapPick(0); sgTrack("map_tab",{tab:t.label}); }} style={{ flex:1, border:"none", cursor:"pointer", borderRadius:99, padding:"8px 0", background:on?`linear-gradient(120deg, ${C.butter}, ${partner})`:"transparent", fontFamily:head, fontSize:12, letterSpacing:"0.03em", color:C.ink, fontWeight:on?600:400 }}>{t.label}</button>
-            );
-          })}
-        </div>
-        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 12px", lineHeight:1.5 }}>{MAP_TABS[mapTab].note}</p>
-
-        {mapTab!==2 ? (
+      {ql ? (
         <>
-        <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:10, margin:"0 0 12px" }}>
-          {picks.map((m,i)=>{
-            const on = i===mapPick;
-            return (
-              <button key={m.k} onClick={()=>{ setMapPick(i); sgTrack("map_pick",{q:m.q}); }} style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:7, border:on?"none":`1px solid ${C.line}`, background:on?`linear-gradient(120deg, ${C.butter}, ${partner})`:"rgba(255,255,255,0.6)", borderRadius:99, padding:"8px 13px", cursor:"pointer" }}>
-                <BrandIcon name={m.icon} size={15} color={C.ink}/>
-                <span style={{ fontFamily:head, fontSize:11.5, letterSpacing:"0.02em", color:C.ink, fontWeight:on?600:400, whiteSpace:"nowrap" }}>{m.k}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ position:"relative", borderRadius:20, overflow:"hidden", border:`1px solid ${C.line}`, boxShadow:`0 22px 46px -34px ${partner}`, background:`linear-gradient(135deg, ${C.sand}, ${C.oat})` }}>
-          <iframe title="Карта Slow Glow" src={mapSrc} loading="lazy" style={{ display:"block", width:"100%", height:282, border:"none" }} allowFullScreen></iframe>
-          <span style={{ position:"absolute", top:12, left:12, display:"inline-flex", alignItems:"center", gap:6, background:"rgba(250,248,241,0.94)", borderRadius:99, padding:"6px 12px", fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink, pointerEvents:"none", boxShadow:"0 6px 16px -8px rgba(26,26,26,0.35)" }}><span style={{ color:partner }}>✦</span> {MAP_TABS[mapTab].badge}</span>
-        </div>
-
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginTop:10 }}>
-          <span style={{ fontSize:12, color:C.inkSoft }}>{mq.k}{mq.d?" · "+mq.d:""} · {city}</span>
-          <a href={ymaps(mq.q)} target="_blank" rel="noopener noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:11, letterSpacing:"0.04em", color:partner, textDecoration:"none" }}>Открыть на Картах <ArrowRight size={14} strokeWidth={2}/></a>
-        </div>
-        </>
-        ) : (
-        <>
-        <div style={{ display:"inline-flex", alignItems:"center", gap:7, marginBottom:12, padding:"6px 12px", borderRadius:99, background:`${partner}1f`, border:`1px solid ${C.line}` }}>
-          <span style={{ color:partner }}>✦</span><span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink }}>Маршруты от Slow Glow</span>
-        </div>
-        {ROUTE_PLANS.map((r)=>{
-          const live = (liveRoute && liveRoute.key===r.k) ? liveRoute : null;
-          const distV = live ? live.dist.toFixed(1) : r.dist;
-          const hasElev = live ? !!(live.elArr && live.elArr.length) : true;
-          const gainTxt = live ? (live.ascent!=null ? Math.round(live.ascent)+" м" : "—") : (r.gain+" м");
-          const elArr = hasElev && live && live.elArr && live.elArr.length ? live.elArr : r.elev;
-          const ep = elevPath(elArr, 260, 56, 6);
-          const busy = routeBusy===r.k;
-          return (
-            <div key={r.k} style={{ border:`1px solid ${live?partner:C.line}`, background:"rgba(255,255,255,0.6)", borderRadius:18, padding:"14px 15px 15px", marginBottom:12 }}>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:9 }}>
-                <span style={{ width:32, height:32, flexShrink:0, borderRadius:10, background:`${partner}1f`, display:"flex", alignItems:"center", justifyContent:"center" }}><BrandIcon name={r.icon} size={17} color={partner}/></span>
+          <Label color={C.inkFaint}>{found.length?`Нашлось: ${found.length}`:"Ничего не нашлось — попробуй другое слово"}</Label>
+          <div style={{ marginTop:12 }}>
+            {found.map((x,i)=>(
+              <button key={i} onClick={()=>setDetail({ item:x.item, partner })} className="fade" style={{ width:"100%", textAlign:"left", display:"flex", gap:13, marginBottom:11, borderRadius:16, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, padding:11, cursor:"pointer", alignItems:"center" }}>
+                <div style={{ width:64, flexShrink:0 }}><Photo t={x.item.t} h={64} radius={11}/></div>
                 <div style={{ flex:1 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                    <span style={{ fontFamily:serif, fontStyle:"italic", fontSize:18, color:C.ink, lineHeight:1.15 }}>{r.k}</span>
-                    {live && <span style={{ fontFamily:head, fontSize:8, letterSpacing:"0.1em", textTransform:"uppercase", color:"#fff", background:partner, borderRadius:99, padding:"2px 7px" }}>По тебе</span>}
-                  </div>
-                  <p style={{ fontSize:12, color:C.inkSoft, margin:"3px 0 0", lineHeight:1.45 }}>{r.vibe}</p>
+                  <Label color={C.inkFaint}>{x.kind}</Label>
+                  <div style={{ fontFamily:serif, fontSize:16.5, color:C.ink, marginTop:2, lineHeight:1.2 }}>{x.label}</div>
                 </div>
-              </div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:6, margin:"11px 0 9px" }}>
-                {[["Дистанция", distV+" км"], ["Набор высоты", gainTxt], ["Время", "~"+r.mins+" мин"], ["Покрытие", r.surface]].map(p=>(
-                  <span key={p[0]} style={{ display:"inline-flex", alignItems:"baseline", gap:5, background:"rgba(255,255,255,0.7)", border:`1px solid ${C.line}`, borderRadius:99, padding:"5px 10px" }}>
-                    <span style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.08em", textTransform:"uppercase", color:C.inkFaint }}>{p[0]}</span>
-                    <span style={{ fontSize:12, color:C.ink, fontWeight:500 }}>{p[1]}</span>
-                  </span>
-                ))}
-              </div>
-              {live && live.mapD && (
-                <div style={{ position:"relative", borderRadius:12, overflow:"hidden", background:`linear-gradient(135deg, ${C.sand}, ${C.oat})`, border:`1px solid ${C.line}`, marginBottom:9 }}>
-                  <svg viewBox="0 0 260 150" width="100%" height="150" style={{ display:"block" }}>
-                    <path d={live.mapD} fill="none" stroke={partner} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"/>
-                  </svg>
-                  <span style={{ position:"absolute", top:6, left:8, fontFamily:head, fontSize:8, letterSpacing:"0.1em", textTransform:"uppercase", color:C.inkFaint }}>Нитка маршрута · от тебя</span>
-                </div>
-              )}
-              {hasElev && (
-              <div style={{ position:"relative", borderRadius:12, overflow:"hidden", background:`linear-gradient(180deg, ${C.oat}, rgba(255,255,255,0.4))`, border:`1px solid ${C.line}`, marginBottom:11 }}>
-                <svg viewBox="0 0 260 56" width="100%" height="56" preserveAspectRatio="none" style={{ display:"block" }}>
-                  <path d={ep.area} fill={`${partner}33`}/>
-                  <path d={ep.line} fill="none" stroke={partner} strokeWidth="2" strokeLinejoin="round"/>
-                </svg>
-                <span style={{ position:"absolute", top:6, left:8, fontFamily:head, fontSize:8, letterSpacing:"0.1em", textTransform:"uppercase", color:C.inkFaint }}>{live?"Профиль высоты · по тебе":"Профиль высоты"}</span>
-              </div>
-              )}
-              <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
-                {ORS_KEY && <button onClick={()=>buildRoute(r)} disabled={busy} style={{ border:"none", background:"transparent", padding:0, cursor:busy?"default":"pointer", display:"inline-flex", alignItems:"center", gap:6, fontFamily:head, fontSize:11, letterSpacing:"0.05em", color:partner }}>{busy?"Строю…":(live?"Обновить по мне":"Построить точно по мне")} <ArrowRight size={14} strokeWidth={2}/></button>}
-                <a href={ymaps(r.q)} target="_blank" rel="noopener noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, fontFamily:head, fontSize:11, letterSpacing:"0.05em", color:ORS_KEY?C.inkSoft:partner, textDecoration:"none" }}>На Картах <ArrowRight size={14} strokeWidth={2}/></a>
-              </div>
-            </div>
-          );
-        })}
-        {routeErr && <p style={{ fontSize:11.5, color:C.coral, lineHeight:1.5, margin:"0 0 6px" }}>{routeErr}</p>}
-        <p style={{ fontSize:11.5, color:C.inkFaint, lineHeight:1.5, margin:"2px 0 0" }}>{ORS_KEY ? "«Построить точно по мне» строит реальную нитку от твоего местоположения с точной дистанцией и набором высоты." : "Дистанция и набор высоты — ориентир эталонного маршрута этого типа. Точную нитку под себя построй на Картах."}</p>
+                <ArrowRight size={17} strokeWidth={1.6} color={C.inkFaint} style={{ flexShrink:0 }}/>
+              </button>
+            ))}
+          </div>
         </>
-        )}
-      </div>
-
-      {/* Опиши настроение — подберём место (вместо ручного поиска) */}
-      <button onClick={openScan} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", gap:13, marginBottom:24, borderRadius:18, background:premium?`linear-gradient(120deg, ${C.butter}, ${partner})`:"rgba(255,255,255,0.6)", border:premium?"none":`1px solid ${C.line}`, padding:"14px 16px", cursor:"pointer" }}>
-        <GlowOrb partner={partner} size={36} spark={false}/>
-        <div style={{ flex:1 }}><Label color={premium?"rgba(26,26,26,0.55)":C.inkFaint}>Подбор места{premium?"":" · Plus"}</Label><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, marginTop:2 }}>Опиши настроение — найду место</div></div>
-        <ArrowRight size={19} strokeWidth={1.7} color={C.ink}/>
-      </button>
-
-      {/* Отобранные места — ручная подборка под эстетику */}
-      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, margin:"0 0 4px" }}>
-        <Label>Отобранные места</Label>
-        <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", color:C.inkFaint }}>РУЧНАЯ ПОДБОРКА</span>
-      </div>
-      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 14px", lineHeight:1.5 }}>Атмосфера, свет и тишина — а не всё подряд. Тапни карточку, чтобы открыть похожее место рядом с тобой.</p>
-      <div style={{ marginBottom:4 }}>
-        {PLACE_POOL.map((p,i)=>{
-          const q = PLACE_Q[p.sc] || p.name;
-          return (
-            <a key={i} href={ymaps(q)} target="_blank" rel="noopener noreferrer" className="pop" style={{ display:"block", textDecoration:"none", marginBottom:14, borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
-              <div style={{ position:"relative" }}>
-                <Photo t={p.t} url={p.url} h={150} radius={0}>
-                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 55%, rgba(26,26,26,0.42) 100%)" }}/>
-                </Photo>
-                <span style={{ position:"absolute", top:11, left:11, background:"rgba(250,248,241,0.92)", borderRadius:99, padding:"4px 11px", fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink }}>{p.sc}</span>
+      ) : (
+        <>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+            <Label color={C.inkFaint}>Мои места{userPlaces && userPlaces.length?` · ${userPlaces.length}`:""}</Label>
+            <button onClick={openAddPlace} style={{ display:"inline-flex", alignItems:"center", gap:5, border:"none", background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${partner})`, color:C.ink, borderRadius:99, padding:"7px 13px", fontFamily:head, fontSize:11.5, letterSpacing:"0.04em", cursor:"pointer" }}><Plus size={14} strokeWidth={2.2}/> Добавить</button>
+          </div>
+          {(!userPlaces || userPlaces.length===0) ? (
+            <button onClick={openAddPlace} style={{ width:"100%", textAlign:"left", border:`1px dashed ${C.line}`, background:"rgba(255,255,255,0.4)", borderRadius:16, padding:"16px 16px", cursor:"pointer", marginBottom:24, display:"flex", alignItems:"center", gap:12 }}>
+              <GlowOrb partner={partner} size={34} spark={false}/>
+              <div><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink }}>Сохрани любимое место</div><p style={{ fontSize:12.5, color:C.inkSoft, margin:"2px 0 0", lineHeight:1.35 }}>Понравилось кафе, ресторан или уголок города, которого не было в приложении? Добавь его с фото и описанием.</p></div>
+            </button>
+          ) : (
+            <div style={{ marginBottom:24 }}>
+              {userPlaces.map(p=>(
+                <div key={p.id} className="fade" style={{ marginBottom:14, borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
+                  {p.photo
+                    ? <img src={p.photo} alt={p.name} style={{ width:"100%", height:160, objectFit:"cover", display:"block" }}/>
+                    : <Photo t={(p.id||0)%6} icon="pin" h={120} radius={0}/>}
+                  <div style={{ padding:"13px 15px 15px" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                      <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink, background:C.sage, padding:"3px 9px", borderRadius:99 }}>{p.type}</span>
+                      <span style={{ fontSize:11.5, color:C.inkFaint }}>добавлено {p.date}</span>
+                    </div>
+                    <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, color:C.ink, lineHeight:1.15 }}>{p.name}</div>
+                    {p.addr && <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:12.5, color:C.inkSoft, margin:"5px 0 0" }}><MapPin size={13} strokeWidth={1.8} color={partner}/> {p.addr}</div>}
+                    {p.desc && <p style={{ fontSize:13.5, lineHeight:1.5, color:C.inkSoft, margin:"6px 0 0" }}>{p.desc}</p>}
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:12 }}>
+                      <a href={`https://yandex.ru/maps/?text=${encodeURIComponent([p.name,p.addr,p.city].filter(Boolean).join(" "))}`} target="_blank" rel="noreferrer" style={{ flex:1, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6, textDecoration:"none", border:"none", background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${partner})`, color:C.ink, borderRadius:99, padding:"9px 12px", fontFamily:head, fontSize:11.5, letterSpacing:"0.04em", cursor:"pointer" }}><MapPin size={14} strokeWidth={2}/> На карте</a>
+                      <button onClick={()=>onEditPlace(p)} aria-label="Редактировать" style={{ width:38, height:38, borderRadius:99, border:`1px solid ${C.line}`, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:C.inkSoft, flexShrink:0 }}>✎</button>
+                      <button onClick={()=>{ if(window.confirm(`Удалить «${p.name}» из коллекции?`)) onDeletePlace(p.id); }} aria-label="Удалить" style={{ width:38, height:38, borderRadius:99, border:`1px solid ${C.line}`, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:C.inkSoft, flexShrink:0 }}><X size={16} strokeWidth={2}/></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ margin:"4px 0 6px" }}><Label color={C.inkFaint}>Вайбовый досуг под настроение</Label></div>
+          <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 12px" }}>Стильные нишевые идеи под твою эстетику — вдохновляйся и устраивай.</p>
+          <div className="sg-scroll" style={{ display:"flex", gap:12, overflowX:"auto", margin:"0 -22px 24px", padding:"0 22px 6px", scrollSnapType:"x mandatory" }}>
+            {shuffleDay(nicheFor(chId), 2).map((n,i)=>{
+              const item={ id:"niche:"+chId+":"+n.v, kind:"Досуг", t:n.t, q:n.q, ql:n.ql, title:n.v, sub:null, note:n.note };
+              const on=isSaved&&isSaved(item.id);
+              return (
+              <div key={i} style={{ flex:"0 0 auto", width:230, scrollSnapAlign:"start", borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
+                <div style={{ position:"relative" }}>
+                  <Photo t={n.t} url={n.url} q={n.q} qlang={n.ql} h={130} radius={0}/>
+                  {toggleSave && <button onClick={()=>toggleSave(item)} aria-label="Сохранить" style={{ position:"absolute", top:9, right:9, width:32, height:32, borderRadius:99, border:"none", cursor:"pointer", background:"rgba(250,248,241,0.9)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 16px -8px rgba(26,26,26,0.5)" }}><Heart size={16} strokeWidth={1.7} color={on?partner:C.inkSoft} fill={on?partner:"none"}/></button>}
+                </div>
+                <div style={{ padding:"12px 14px 14px" }}>
+                  <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, lineHeight:1.18 }}>{n.v}</div>
+                  <p style={{ fontSize:12.5, lineHeight:1.5, color:C.inkSoft, margin:"6px 0 0" }}>{n.note}</p>
+                </div>
               </div>
+            );})}
+          </div>
+          <div style={{ margin:"4px 0 6px" }}><Label color={C.inkFaint}>Идеи и события для вдохновения</Label></div>
+          <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 12px" }}>События, идеи и книги под твою эстетику — обновляются каждый день. Сохраняй ♡ любимое.</p>
+          <div className="sg-scroll" style={{ display:"flex", gap:12, overflowX:"auto", margin:"0 -22px 24px", padding:"0 22px 6px", scrollSnapType:"x mandatory" }}>
+            {inspoFor().map((n,i)=>{
+              const item={ id:"inspo:"+n.v, kind:n.kind, t:n.t, q:n.q, ql:n.ql, title:n.v, sub:null, note:n.note };
+              const on=isSaved&&isSaved(item.id);
+              return (
+              <div key={i} style={{ flex:"0 0 auto", width:222, scrollSnapAlign:"start", borderRadius:18, overflow:"hidden", background:`linear-gradient(168deg, ${n.ac}1f, rgba(255,255,255,0.7) 55%)`, border:`1px solid ${C.line}`, boxShadow:"0 18px 40px -28px rgba(26,26,26,0.5)" }}>
+                <div style={{ position:"relative" }}>
+                  <Photo t={n.t} url={n.url} q={n.q} qlang={n.ql} h={118} radius={0}/>
+                  <span style={{ position:"absolute", top:9, left:9, background:"rgba(250,248,241,0.92)", borderRadius:99, padding:"3px 10px", fontFamily:head, fontSize:9, letterSpacing:"0.08em", color:C.ink, display:"inline-flex", alignItems:"center", gap:5 }}><span style={{ width:6, height:6, borderRadius:99, background:n.ac }}/>{n.kind}</span>
+                  {toggleSave && <button onClick={()=>toggleSave(item)} aria-label="Сохранить" style={{ position:"absolute", top:8, right:8, width:31, height:31, borderRadius:99, border:"none", cursor:"pointer", background:"rgba(250,248,241,0.92)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 16px -10px rgba(26,26,26,0.4)" }}><Heart size={15} strokeWidth={1.7} color={on?partner:C.inkSoft} fill={on?partner:"none"}/></button>}
+                </div>
+                <div style={{ padding:"11px 13px 14px" }}>
+                  <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16.5, color:C.ink, lineHeight:1.18 }}>{n.v}</div>
+                  <p style={{ fontSize:12, lineHeight:1.5, color:C.inkSoft, margin:"6px 0 0" }}>{n.note}</p>
+                </div>
+              </div>
+            );})}
+          </div>
+          <Label color={C.inkFaint}>Места для тебя</Label>
+          <div style={{ marginTop:12 }}>
+          {places.map((p,i)=>(
+            <button key={i} onClick={()=>setDetail({ item:p, partner })} className="pop" style={{ width:"100%", textAlign:"left", marginBottom:14, borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, cursor:"pointer", padding:0, display:"block" }}>
+              <Photo t={p.t} url={p.url} h={150} radius={0}/>
               <div style={{ padding:"13px 15px 15px" }}>
-                <div style={{ fontFamily:serif, fontSize:18, color:C.ink, lineHeight:1.2 }}>{p.name}</div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
+                  <div><Label>{p.sc}</Label><div style={{ fontFamily:serif, fontSize:18, color:C.ink, marginTop:2, lineHeight:1.2 }}>{p.name}</div></div>
+                  <div style={{ textAlign:"center" }}><ScoreRing score={p.score} partner={C.coral}/><div style={{ fontFamily:head, fontSize:8, letterSpacing:"0.08em", color:C.inkFaint, marginTop:1 }}>GLOW SCORE</div></div>
+                </div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:10 }}>
                   {p.why.map(w=><span key={w} style={{ fontSize:12, color:C.ink, background:C.sage, padding:"4px 10px", borderRadius:99 }}>✓ {w}</span>)}
-                </div>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:13 }}>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:12.5, color:C.inkSoft }}><MapPin size={13} strokeWidth={1.9} color={partner}/> Похожее рядом · {city}</span>
-                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:11, letterSpacing:"0.04em", color:C.ink }}>На карте <ArrowRight size={15} strokeWidth={1.8}/></span>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:12, color:C.inkSoft, background:"rgba(26,26,26,0.05)", padding:"4px 10px", borderRadius:99 }}><MapPin size={11} strokeWidth={2}/>{p.addr}</span>
                 </div>
               </div>
-            </a>
-          );
-        })}
-      </div>
-
-      {/* Мои места */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", margin:"24px 0 10px" }}>
-        <Label color={C.inkFaint}>Мои места{userPlaces && userPlaces.length?` · ${userPlaces.length}`:""}</Label>
-        <button onClick={openAddPlace} style={{ display:"inline-flex", alignItems:"center", gap:5, border:"none", background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${partner})`, color:C.ink, borderRadius:99, padding:"7px 13px", fontFamily:head, fontSize:11.5, letterSpacing:"0.04em", cursor:"pointer" }}><Plus size={14} strokeWidth={2.2}/> Добавить</button>
-      </div>
-      {(!userPlaces || userPlaces.length===0) ? (
-        <button onClick={openAddPlace} style={{ width:"100%", textAlign:"left", border:`1px dashed ${C.line}`, background:"rgba(255,255,255,0.4)", borderRadius:16, padding:"16px 16px", cursor:"pointer", marginBottom:8, display:"flex", alignItems:"center", gap:12 }}>
-          <GlowOrb partner={partner} size={34} spark={false}/>
-          <div><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink }}>Сохрани любимое место</div><p style={{ fontSize:12.5, color:C.inkSoft, margin:"2px 0 0", lineHeight:1.35 }}>Нашёл своё кафе, ресторан или уголок города? Добавь его с фото и описанием — будет под рукой.</p></div>
-        </button>
-      ) : (
-        <div style={{ marginBottom:8 }}>
-          {userPlaces.map(p=>(
-            <div key={p.id} className="fade" style={{ marginBottom:14, borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
-              {p.photo
-                ? <img src={p.photo} alt={p.name} style={{ width:"100%", height:160, objectFit:"cover", display:"block" }}/>
-                : <Photo t={(p.id||0)%6} icon="pin" h={120} radius={0}/>}
-              <div style={{ padding:"13px 15px 15px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                  <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink, background:C.sage, padding:"3px 9px", borderRadius:99 }}>{p.type}</span>
-                  <span style={{ fontSize:11.5, color:C.inkFaint }}>добавлено {p.date}</span>
-                </div>
-                <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, color:C.ink, lineHeight:1.15 }}>{p.name}</div>
-                {p.addr && <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:12.5, color:C.inkSoft, margin:"5px 0 0" }}><MapPin size={13} strokeWidth={1.8} color={partner}/> {p.addr}</div>}
-                {p.desc && <p style={{ fontSize:13.5, lineHeight:1.5, color:C.inkSoft, margin:"6px 0 0" }}>{p.desc}</p>}
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:12 }}>
-                  <a href={`https://yandex.ru/maps/?text=${encodeURIComponent([p.name,p.addr,p.city].filter(Boolean).join(" "))}`} target="_blank" rel="noreferrer" style={{ flex:1, display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6, textDecoration:"none", border:"none", background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${partner})`, color:C.ink, borderRadius:99, padding:"9px 12px", fontFamily:head, fontSize:11.5, letterSpacing:"0.04em", cursor:"pointer" }}><MapPin size={14} strokeWidth={2}/> На карте</a>
-                  <button onClick={()=>onEditPlace(p)} aria-label="Редактировать" style={{ width:38, height:38, borderRadius:99, border:`1px solid ${C.line}`, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:C.inkSoft, flexShrink:0 }}>✎</button>
-                  <button onClick={()=>{ if(window.confirm(`Удалить «${p.name}» из коллекции?`)) onDeletePlace(p.id); }} aria-label="Удалить" style={{ width:38, height:38, borderRadius:99, border:`1px solid ${C.line}`, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:C.inkSoft, flexShrink:0 }}><X size={16} strokeWidth={2}/></button>
-                </div>
-              </div>
-            </div>
+            </button>
           ))}
-        </div>
-      )}
-
-      {/* Занятия под настроение — три на сегодня */}
-      <div style={{ margin:"24px 0 4px" }}><Label>Занятия под настроение</Label></div>
-      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 12px", lineHeight:1.5 }}>Три красивых занятия на сегодня — каждое открывается с правилами и пользой. Обновляются ежедневно.</p>
-      {hobbies.map((l,i)=>(
-        <button key={l.v} onClick={()=>setDetail({ item:l, partner })} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", gap:14, marginBottom:12, borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, padding:12, cursor:"pointer" }}>
-          <div style={{ width:78, flexShrink:0 }}><Photo t={l.t} url={l.url} h={78} radius={12}/></div>
-          <div style={{ flex:1 }}>
-            <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase", color:l.air?"#6E8E5E":C.inkFaint, background:l.air?"rgba(194,211,172,0.4)":"rgba(26,26,26,0.05)", padding:"3px 9px", borderRadius:99 }}>
-              {l.air && <Wind size={11} strokeWidth={2}/>}{l.air?"На воздухе":"Дома"}
-            </span>
-            <div style={{ fontFamily:serif, fontSize:17, color:C.ink, margin:"6px 0 3px", lineHeight:1.2 }}>{l.v}</div>
-            <p style={{ fontSize:12.5, lineHeight:1.45, color:C.inkSoft, margin:0 }}>{l.note}</p>
           </div>
-          <ArrowRight size={17} strokeWidth={1.6} color={C.inkFaint} style={{ alignSelf:"center", flexShrink:0 }}/>
-        </button>
-      ))}
 
-      {/* Идеи и вечера под эстетику */}
-      <div style={{ margin:"24px 0 4px" }}><Label>Идеи и вечера под эстетику</Label></div>
-      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 12px", lineHeight:1.5 }}>Маленькие сценарии красивых вечеров — вдохновляйся и устраивай. Сохраняй ♡ любимое.</p>
-      <div className="sg-scroll" style={{ display:"flex", gap:12, overflowX:"auto", margin:"0 -22px 8px", padding:"0 22px 6px", scrollSnapType:"x mandatory" }}>
-        {ideas.map((n,i)=>{
-          const item={ id:"niche:"+chId+":"+n.v, kind:"Досуг", t:n.t, q:n.q, ql:n.ql, title:n.v, sub:null, note:n.note };
-          const on=isSaved&&isSaved(item.id);
-          return (
-            <div key={i} style={{ flex:"0 0 auto", width:230, scrollSnapAlign:"start", borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
+          <div style={{ margin:"24px 0 4px" }}><Label>Хобби и занятия — топ-3 на сегодня</Label></div>
+          <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 12px" }}>Обновляется каждый день. Каждое открывается с правилами и пользой.</p>
+          {(allHob ? leisureFor(chId) : pick(leisureFor(chId), 3, 9)).map((l,i)=>(
+            <button key={l.v} onClick={()=>setDetail({ item:l, partner })} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", gap:14, marginBottom:12, borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}`, padding:12, cursor:"pointer" }}>
+              <div style={{ width:78, flexShrink:0 }}><Photo t={l.t} url={l.url} h={78} radius={12}/></div>
+              <div style={{ flex:1 }}>
+                <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase", color:l.air?"#6E8E5E":C.inkFaint, background:l.air?"rgba(194,211,172,0.4)":"rgba(26,26,26,0.05)", padding:"3px 9px", borderRadius:99 }}>
+                  {l.air && <Wind size={11} strokeWidth={2}/>}{l.air?"На воздухе":"Дома"}
+                </span>
+                <div style={{ fontFamily:serif, fontSize:17, color:C.ink, margin:"6px 0 3px", lineHeight:1.2 }}>{l.v}</div>
+                <p style={{ fontSize:12.5, lineHeight:1.45, color:C.inkSoft, margin:0 }}>{l.note}</p>
+              </div>
+              <ArrowRight size={17} strokeWidth={1.6} color={C.inkFaint} style={{ alignSelf:"center", flexShrink:0 }}/>
+            </button>
+          ))}
+          <button onClick={()=>setAllHob(v=>!v)} style={{ width:"100%", height:44, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.5)", cursor:"pointer", fontFamily:head, fontSize:13, letterSpacing:"0.04em", color:C.inkSoft, marginTop:2 }}>{allHob?"Скрыть":"Показать все хобби"}</button>
+
+          <div style={{ margin:"24px 0 12px" }}><Label>События для тебя</Label></div>
+          {events.map((ev,i)=>(
+            <button key={i} onClick={()=>setDetail({ item:ev, partner })} className="pop" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", borderRadius:18, overflow:"hidden", cursor:"pointer", padding:0, marginBottom:12 }}>
               <div style={{ position:"relative" }}>
-                <Photo t={n.t} url={n.url} q={n.q} qlang={n.ql} h={130} radius={0}/>
-                {toggleSave && <button onClick={()=>toggleSave(item)} aria-label="Сохранить" style={{ position:"absolute", top:9, right:9, width:32, height:32, borderRadius:99, border:"none", cursor:"pointer", background:"rgba(250,248,241,0.9)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 6px 16px -8px rgba(26,26,26,0.5)" }}><Heart size={16} strokeWidth={1.7} color={on?partner:C.inkSoft} fill={on?partner:"none"}/></button>}
+                <Photo t={ev.t} url={ev.url} h={120} radius={0}>
+                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 45%, rgba(26,26,26,0.45) 100%)" }}/>
+                </Photo>
+                <div style={{ position:"absolute", top:10, left:12, fontFamily:head, fontSize:9.5, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink, background:"rgba(250,248,241,0.92)", padding:"4px 9px", borderRadius:99 }}>{ev.k}</div>
+                <div style={{ position:"absolute", left:14, right:14, bottom:11, display:"flex", alignItems:"flex-end", justifyContent:"space-between" }}>
+                  <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:18, color:"#fff", lineHeight:1.1, textShadow:"0 1px 8px rgba(26,26,26,0.5)" }}>{ev.v}</div>
+                  <ArrowRight size={18} strokeWidth={1.8} color="#fff"/>
+                </div>
               </div>
-              <div style={{ padding:"12px 14px 14px" }}>
-                <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, lineHeight:1.18 }}>{n.v}</div>
-                <p style={{ fontSize:12.5, lineHeight:1.5, color:C.inkSoft, margin:"6px 0 0" }}>{n.note}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -3431,17 +2964,9 @@ function Me_({ ch, chapterId, setChapterId, setPin, setWorld, premium, earlyAcce
           </button>
         ))}
       </div>
-      <div style={{ margin:"2px 0 10px" }}><Label color={C.inkFaint}>ИИ Slow Glow</Label></div>
-      <button onClick={()=>setPin(true)} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", cursor:"pointer", borderRadius:20, overflow:"hidden", padding:"18px 20px", marginBottom:22, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 72%, ${C.oat})`, boxShadow:`0 18px 38px -24px ${ch.partner}` }}>
-        <div style={{ position:"absolute", right:-14, top:-14, width:88, height:88, borderRadius:99, background:"rgba(255,255,255,0.22)" }}/>
-        <div style={{ position:"relative", display:"flex", alignItems:"center", gap:13 }}>
-          <GlowOrb partner={ch.partner} size={44}/>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:"rgba(26,26,26,0.6)", fontWeight:600, marginBottom:3 }}>Анализатор пинов</div>
-            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, color:C.ink, lineHeight:1.15 }}>Не понимаешь, что тебя цепляет?</div>
-            <p style={{ fontSize:12.5, lineHeight:1.42, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>Загрузи любимые сохранения — ИИ соберёт твою эстетику и доску мечты заново. Возвращайся, когда меняется настроение.</p>
-          </div>
-        </div>
+      <button onClick={()=>setPin(true)} style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.5)", borderRadius:18, padding:"15px 18px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
+        <div><Label>Сохранения → Реальность</Label><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:18, color:C.ink, marginTop:3 }}>Как повторить твои образы</div></div>
+        <ArrowRight size={20} strokeWidth={1.7} color={C.inkSoft}/>
       </button>
       <button onClick={openPlus} style={{ width:"100%", textAlign:"left", border:"none", cursor:"pointer", borderRadius:20, overflow:"hidden", padding:0, marginBottom:14, background:premium?`linear-gradient(120deg, ${C.butter}, ${ch.partner})`:"rgba(255,255,255,0.55)", boxShadow:premium?"0 16px 34px -22px rgba(26,26,26,0.5)":"none", borderWidth:premium?0:1, borderStyle:"solid", borderColor:C.line }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px" }}>
@@ -3740,646 +3265,6 @@ function sgSpread(arr, keyOf){
   return out;
 }
 
-/* ── Карточка-факт для Stories ───────────────────────────────
-   Берёт содержательный факт из статьи (a.v + a.body) и рисует
-   красивую карточку 9:16: настоящее фото-фон + текст поверх,
-   как открытка, но со смыслом. Если фото нельзя нарисовать на
-   canvas (CORS) — мягкий градиент-фолбэк, картинка всегда выходит. */
-function sgCover(x, img, W, H){ const ir=img.width/img.height, cr=W/H; let w,h; if(ir>cr){ h=H; w=H*ir; } else { w=W; h=W/ir; } x.drawImage(img,(W-w)/2,(H-h)/2,w,h); }
-function sgLines(x, t, maxW){ const words=String(t).split(" "); let line="",L=[]; words.forEach(o=>{ const tt=line?line+" "+o:o; if(x.measureText(tt).width>maxW && line){ L.push(line); line=o; } else line=tt; }); if(line) L.push(line); return L; }
-function sgFactExcerpt(body, max=212){ const p=(String(body||"").split("\n").map(s=>s.trim()).filter(Boolean)[0])||""; if(p.length<=max) return p; const cut=p.slice(0,max+1); const b=Math.max(cut.lastIndexOf(". "),cut.lastIndexOf("! "),cut.lastIndexOf("? ")); if(b>=120) return p.slice(0,b+1); return cut.slice(0,cut.lastIndexOf(" ")).replace(/[\s.,;:!?—-]+$/,"")+"…"; }
-function ShareFact({ a, ch }){
-  const ref=useRef(null);
-  const [busy,setBusy]=useState(false);
-  const pic=mindPic(a);
-  const grad=MIND_GRAD[((a.t%MIND_GRAD.length)+MIND_GRAD.length)%MIND_GRAD.length];
-  const excerpt=sgFactExcerpt(a.body);
-  const shareText=`${a.v} — красивый факт из Slow Glow. Узнай больше → slow-glow.app`;
-  function loadImg(src){ return new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>res(im); im.onerror=()=>rej(new Error("x")); im.src=src; }); }
-  async function paint(){
-    const cv=ref.current, W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
-    try{ await document.fonts.load("400 90px 'Instrument Serif'"); await document.fonts.load("500 30px Inter"); await document.fonts.ready; }catch(e){}
-    let img=null; try{ img=await loadImg(pic); }catch(e){ img=null; }
-    if(img && img.width>1 && img.height>1){ sgCover(x,img,W,H); x.fillStyle="rgba(20,16,14,0.20)"; x.fillRect(0,0,W,H); }
-    else { const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,grad[0]); g.addColorStop(1,grad[1]); x.fillStyle=g; x.fillRect(0,0,W,H); x.fillStyle="rgba(255,255,255,0.14)"; x.beginPath(); x.arc(W*0.8,H*0.18,300,0,7); x.fill(); }
-    // верхний и нижний скримы для читаемости
-    const tg=x.createLinearGradient(0,0,0,430); tg.addColorStop(0,"rgba(18,14,12,0.46)"); tg.addColorStop(1,"rgba(18,14,12,0)"); x.fillStyle=tg; x.fillRect(0,0,W,430);
-    const bgs=x.createLinearGradient(0,H*0.30,0,H); bgs.addColorStop(0,"rgba(16,13,11,0)"); bgs.addColorStop(0.5,"rgba(16,13,11,0.58)"); bgs.addColorStop(1,"rgba(13,10,9,0.92)"); x.fillStyle=bgs; x.fillRect(0,H*0.30,W,H*0.70);
-    const M=96;
-    // вордмарк
-    x.textAlign="left"; x.font="500 30px Inter, sans-serif"; x.fillStyle="rgba(255,255,255,0.92)";
-    x.fillText("S L O W   G L O W", M, 122);
-    // футер
-    x.font="500 29px Inter, sans-serif"; x.fillStyle="rgba(255,255,255,0.74)"; x.fillText("slow-glow.app", M, H-92);
-    x.textAlign="right"; x.fillText("красивые факты каждый день", W-M, H-92); x.textAlign="left";
-    // экстракт (снизу вверх)
-    x.font="400 38px Inter, sans-serif"; let exLines=sgLines(x, excerpt, W-M*2);
-    if(exLines.length>4){ exLines=exLines.slice(0,4); exLines[3]=exLines[3].replace(/[\s.,;:!?—-]+$/,"")+"…"; }
-    const exLH=56, exLast=H-202, exFirst=exLast-(exLines.length-1)*exLH;
-    // заголовок
-    x.font="400 90px 'Instrument Serif', Georgia, serif"; const tLines=sgLines(x, a.v, W-M*2);
-    const tLH=96, tLast=exFirst-66, tFirst=tLast-(tLines.length-1)*tLH;
-    // акцент-черта + рубрика над заголовком
-    const cat=tFirst-116;
-    x.fillStyle=ch.partner; sgRound(x, M, cat-60, 58, 6, 3); x.fill();
-    x.font="500 25px Inter, sans-serif"; x.fillStyle="rgba(255,255,255,0.85)";
-    x.fillText(String(a.k).toUpperCase()+"   ·   ФАКТ", M, cat);
-    // заголовок
-    x.fillStyle="#FFFFFF"; x.font="400 90px 'Instrument Serif', Georgia, serif";
-    tLines.forEach((l,i)=>x.fillText(l, M, tFirst+i*tLH));
-    // экстракт
-    x.fillStyle="rgba(255,255,255,0.9)"; x.font="400 38px Inter, sans-serif";
-    exLines.forEach((l,i)=>x.fillText(l, M, exFirst+i*exLH));
-  }
-  async function blob(){ await paint(); return await new Promise(r=>ref.current.toBlob(r,"image/png",0.95)); }
-  function dl(b){ const u=URL.createObjectURL(b); const el=document.createElement("a"); el.href=u; el.download="slow-glow-факт.png"; el.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
-  async function share(){ setBusy(true); sgTrack("share_fact"); try{ const b=await blob(); const f=new File([b],"slow-glow-факт.png",{type:"image/png"}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],text:shareText}); else dl(b); }catch(e){} setBusy(false); }
-  async function down(){ setBusy(true); try{ dl(await blob()); }catch(e){} setBusy(false); }
-  return (
-    <div style={{ borderRadius:18, padding:"15px 16px 16px", margin:"22px 0 4px", background:`linear-gradient(125deg, ${C.butter}33, ${ch.partner}22 60%, rgba(255,255,255,0.45))`, border:`1px solid ${C.line}` }}>
-      <Label color={ch.partner}>Поделиться фактом</Label>
-      <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 12px", lineHeight:1.45 }}>Красивая карточка 9:16 с этим фактом — текст прямо на фото, как открытка. Готова для Stories.</p>
-      <button onClick={share} disabled={busy} style={{ width:"100%", height:46, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:14, fontWeight:500, marginBottom:8 }}>{busy?"Готовлю карточку…":"Поделиться в сторис"}</button>
-      <button onClick={down} disabled={busy} style={{ width:"100%", height:42, borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", cursor:"pointer", color:C.ink, fontFamily:body, fontSize:13.5 }}>Скачать картинку</button>
-      <canvas ref={ref} style={{ display:"none" }}/>
-    </div>
-  );
-}
-/* ── Коллекции-капсулы ────────────────────────────────────────
-   Прообраз будущей модели: один объект = целый «мир» под состояние.
-   Не категории, а сценарий красивого дня. Прототип — French Summer. */
-const CAPSULES = [
-  {
-    id:"french-summer",
-    badge:"French Summer",
-    title:"French Summer",
-    ru:"Французское лето",
-    accent:C.coral,
-    cover:IMG.lavender,
-    sub:"Юг Франции в обычном дне — свет, лень без вины, цитрусы и лён.",
-    intro:"Французское лето — это не билет на юг, а состояние. Тёплый свет на стене, неспешное утро с кофе, инжир и лимоны, лён цвета масла и привычка ничего не делать красиво. Эта коллекция собирает один такой день целиком — от фильма на вечер до аромата и маленького ритуала. Можно прожить всё подряд, а можно взять одно и замедлиться уже сегодня.",
-    blocks:[
-      { icon:"spark", k:"Фильмы", note:"Три фильма, после которых хочется жить медленнее.", img:IMG.f1Cinema, items:[
-        { v:"«Хороший год» (A Good Year)", why:"Прованс, виноградники и герой, который заново учится замедляться." },
-        { v:"«Зови меня своим именем»", why:"Долгое южное лето, солнце и абрикосы — чистое ощущение тепла." },
-        { v:"«Амели»", why:"Париж как тёплая сказка о внимании к маленьким радостям." },
-      ]},
-      { icon:"wave", k:"Музыка", note:"Плейлист для медленного утра с кофе.", items:[
-        { v:"Françoise Hardy", why:"Мягкий французский шик 60-х — будто свет сквозь штору." },
-        { v:"Carla Bruni", why:"Тёплый шёпот вместо будильника." },
-        { v:"Zaz", why:"Уличный парижский джаз для лёгкого настроения." },
-      ]},
-      { icon:"book", k:"Книга", img:IMG.homeLibraryNook, items:[
-        { v:"«Год в Провансе», Питер Мейл", why:"Смешно и тепло про переезд к медленной жизни на юге Франции." },
-        { v:"Колетт, рассказы", why:"Чувственная французская проза о лете, саде и простых удовольствиях." },
-      ]},
-      { icon:"flower", k:"Аромат", img:IMG.perfumeNeroli, items:[
-        { v:"Инжир, нероли и цитрус", why:"Средиземноморье в одном вдохе — например, инжирные ароматы вроде Diptyque Philosykos." },
-      ]},
-      { icon:"cup", k:"Напиток", items:[
-        { v:"Лимонад с розмарином", why:"Лето в стакане без лишнего сахара — рецепт уже есть в «Сегодня»." },
-      ]},
-      { icon:"leaf", k:"Рецепт", img:IMG.lemonPasta, items:[
-        { v:"Паста с лимоном", why:"20 минут средиземноморской лёгкости: цедра, оливковое масло, пармезан." },
-      ]},
-      { icon:"pin", k:"Кафе", placeQ:"кофейня с террасой", items:[
-        { v:"Кофейня с террасой и светом", why:"Большие окна, тихо до полудня — найди похожую рядом с собой." },
-      ]},
-      { icon:"leaf", k:"Прогулка", img:IMG.berryMarket, items:[
-        { v:"Утро на фермерском рынке", why:"Цветы, инжир и кофе навынос — самый French ритуал выходного." },
-      ]},
-      { icon:"candle", k:"Ритуал", img:IMG.parisBalcony, items:[
-        { v:"Аперитив на закате", why:"Бокал розе, оливки, телефон в другой комнате — 30 минут только для себя." },
-      ]},
-      { icon:"sun", k:"Образ дня", items:[
-        { v:"Лён цвета масла", why:"Один тёплый нейтральный тон, золотые серьги, плетёная сумка." },
-      ]},
-      { kind:"quote", text:"Vivre lentement — жить медленно, чтобы успеть почувствовать." },
-      { kind:"challenge", text:"Сегодня устрой себе 20 минут farniente — красиво ничего не делать: кофе, свет из окна и ни одной задачи." },
-    ],
-  },
-  {
-    id:"blue-mind",
-    badge:"Blue Mind",
-    title:"Blue Mind",
-    ru:"Тихая вода",
-    accent:"#6E93B0",
-    cover:IMG.oceanGlass,
-    sub:"Состояние у воды — когда мысли замедляются и дыхание выравнивается.",
-    intro:"Учёные называют это «blue mind» — мягкое спокойствие, которое приходит рядом с водой. Море, река, озеро или даже наполненная ванна переключают нервную систему: пульс ровнее, мысли тише, время будто растягивается. Эта коллекция — про то, как вернуть себе это состояние, даже если до моря далеко. Возьми одно и побудь у воды хотя бы десять минут.",
-    blocks:[
-      { icon:"spark", k:"Фильмы", note:"Медленное кино с водой в главной роли.", img:IMG.boatSunset, items:[
-        { v:"«Большая синева» (Le Grand Bleu)", why:"Средиземное море, фридайвинг и почти медитативная тишина глубины." },
-        { v:"«Жизнь Пи»", why:"Океан как целый мир — красиво, бескрайне и странно успокаивающе." },
-        { v:"«Океаны» (Disneynature)", why:"Документальная красота воды без слов — просто смотри и дыши." },
-      ]},
-      { icon:"wave", k:"Музыка", note:"Эмбиент для глубокого выдоха.", items:[
-        { v:"Ólafur Arnalds", why:"Исландское фортепиано и струны — как туман над водой." },
-        { v:"Nils Frahm", why:"Тёплый минимализм для тишины и работы без спешки." },
-        { v:"Sigur Rós", why:"Звук, похожий на северный океан — медленный и огромный." },
-      ]},
-      { icon:"book", k:"Книга", img:IMG.readSea, items:[
-        { v:"«Blue Mind», Уоллес Николс", why:"Та самая книга о том, почему вода делает нас спокойнее и счастливее." },
-        { v:"«Старик и море», Хемингуэй", why:"Короткая и огромная история о море, терпении и достоинстве." },
-      ]},
-      { icon:"flower", k:"Аромат", items:[
-        { v:"Соль, водоросли и свежесть", why:"Морские, озоновые ароматы — например, Acqua di Parma Blu Mediterraneo." },
-      ]},
-      { icon:"cup", k:"Напиток", items:[
-        { v:"Вода с огурцом и мятой", why:"Прохладная и почти безвкусная — ритуал заботы, а не жажды." },
-      ]},
-      { icon:"leaf", k:"Рецепт", img:IMG.greekTable, items:[
-        { v:"Греческий салат", why:"Свежесть Средиземноморья за десять минут — помидоры, фета, орегано." },
-      ]},
-      { icon:"sun", k:"Практика", items:[
-        { v:"Дыхание 4-7-8 у окна", why:"Вдох на 4, задержка на 7, выдох на 8 — пять кругов, и тело отпускает." },
-      ]},
-      { icon:"pin", k:"Место у воды", placeQ:"набережная", items:[
-        { v:"Набережная, река или озеро", why:"Найди ближайшую воду — даже городской канал работает. Просто посиди рядом." },
-      ]},
-      { icon:"leaf", k:"Прогулка", img:IMG.beachChairs, items:[
-        { v:"Медленно вдоль воды на закате", why:"Без маршрута и цели — идти, пока садится солнце, и смотреть на блики." },
-      ]},
-      { icon:"candle", k:"Ритуал", img:IMG.greekSunset, items:[
-        { v:"Вечер у воды без задач", why:"Тёплый свет, плед, ноль уведомлений — пусть вода задаёт ритм." },
-      ]},
-      { kind:"quote", text:"Вода ничего не торопит — и всё успевает." },
-      { kind:"challenge", text:"Сегодня десять минут смотри на воду — море, реку или даже наполненную ванну — и просто дыши, ничего не решая." },
-    ],
-  },
-  {
-    id:"slow-morning",
-    badge:"Slow Morning",
-    title:"Slow Morning",
-    ru:"Медленное утро",
-    accent:"#B8946A",
-    cover:IMG.mistySunrisePath,
-    sub:"Первый час дня, отданный только себе — свет, кофе и тишина.",
-    intro:"Медленное утро — это маленькое сопротивление спешке. Пока мир ещё не начал требовать, можно отдать первый час себе: впустить свет, медленно заварить кофе, не трогать телефон. Эта коллекция собирает спокойное утро целиком — от музыки до утренних страниц. Возьми одно и начни день мягко.",
-    blocks:[
-      { icon:"spark", k:"Фильмы", note:"Тихое кино про красоту обычных дней.", img:IMG.f1Cinema, items:[
-        { v:"«Идеальные дни» (Perfect Days)", why:"Вендерс снял почти молитву об утренних ритуалах и внимании к мелочам." },
-        { v:"«Патерсон»", why:"Неделя из жизни водителя автобуса, который пишет стихи — медленно и нежно." },
-      ]},
-      { icon:"wave", k:"Музыка", note:"Что включить, пока варится кофе.", img:IMG.vinylFlowersRecord, items:[
-        { v:"Bill Evans", why:"Мягкий джазовый рояль — идеальный фон для медленного утра." },
-        { v:"Agnes Obel", why:"Прозрачное фортепиано и голос как утренний свет." },
-        { v:"Norah Jones", why:"Тёплый, ленивый, кофейный вокал." },
-      ]},
-      { icon:"book", k:"Книга", img:IMG.homeLibraryNook, items:[
-        { v:"«Магия утра», Хэл Элрод", why:"О том, как первые 30 минут задают тон всему дню." },
-        { v:"«Уолден», Генри Торо", why:"Манифест медленной, осознанной жизни — по абзацу в день." },
-      ]},
-      { icon:"candle", k:"Ритуал", img:IMG.letters, items:[
-        { v:"Утренние страницы", why:"Три страницы от руки сразу после пробуждения — выгрузить голову на бумагу." },
-      ]},
-      { icon:"cup", k:"Напиток", items:[
-        { v:"Фильтр-кофе или матча", why:"Не ради кофеина, а ради самого медленного ритуала заваривания." },
-      ]},
-      { icon:"leaf", k:"Рецепт", img:IMG.figYogurt, items:[
-        { v:"Овсянка на ночь с ягодами", why:"Готовится с вечера — утром только достать и украсить ягодами." },
-      ]},
-      { icon:"sun", k:"Свет", img:IMG.windowLightCurtain, items:[
-        { v:"10 минут утреннего света", why:"Постой у окна или на балконе — утренний свет мягко будит и выравнивает ритм дня." },
-      ]},
-      { icon:"leaf", k:"Прогулка", items:[
-        { v:"Короткая прогулка до кофейни", why:"Дойти пешком за кофе, без наушников и телефона — разбудить тело и голову." },
-      ]},
-      { icon:"pin", k:"Кафе", placeQ:"кофейня", items:[
-        { v:"Тихая кофейня к открытию", why:"Приходи к самому открытию, пока пусто и негромко — найди такую рядом." },
-      ]},
-      { icon:"flower", k:"Аромат", items:[
-        { v:"Кофе, кардамон и свежее бельё", why:"Тёплые уютные ноты, с которых приятно начинать день." },
-      ]},
-      { kind:"quote", text:"Как начинается утро — так звучит весь день." },
-      { kind:"challenge", text:"Завтра первый час дня — без телефона. Только свет из окна, медленный кофе и ты." },
-    ],
-  },
-  {
-    id:"rainy-sunday",
-    badge:"Rainy Sunday",
-    title:"Rainy Sunday",
-    ru:"Дождливое воскресенье",
-    accent:"#8D86A6",
-    cover:IMG.goldenBokeh,
-    sub:"Дождь как разрешение никуда не спешить — свечи, суп и длинная книга.",
-    intro:"Дождливое воскресенье — это законный повод замедлиться. Не нужно никуда бежать: можно зажечь свечи, сварить суп, открыть толстую книгу и слушать, как стучит по окну. Эта коллекция собирает уютный домашний день целиком. Выбирай что угодно — здесь нет неправильных вариантов.",
-    blocks:[
-      { icon:"spark", k:"Фильмы", note:"Тёплое кино под звук дождя.", img:IMG.f1Cinema, items:[
-        { v:"«Маленькие женщины» (2019)", why:"Сёстры, письма и тёплый свет — фильм-объятие на серый день." },
-        { v:"«Шоколад» (Chocolat)", why:"Французская деревня, какао и история о том, как уют меняет людей." },
-      ]},
-      { icon:"wave", k:"Музыка", note:"Дождь любит фортепиано.", items:[
-        { v:"Erik Satie — Gymnopédies", why:"Самая дождливая музыка на свете — медленная и задумчивая." },
-        { v:"Chet Baker", why:"Меланхоличная труба и шёпот для серого вечера." },
-      ]},
-      { icon:"book", k:"Книга", img:IMG.balconyEveningBook, items:[
-        { v:"«Джейн Эйр», Шарлотта Бронте", why:"Длинная, обволакивающая история — то, что нужно на целый день." },
-        { v:"Мэри Оливер, стихи", why:"Одно стихотворение под чай — тихо и глубоко." },
-      ]},
-      { icon:"leaf", k:"Рецепт", items:[
-        { v:"Тыквенный крем-суп", why:"Бархатное тепло в одной тарелке — рецепт уже есть в «Сегодня»." },
-      ]},
-      { icon:"cup", k:"Напиток", items:[
-        { v:"Горячий какао с корицей", why:"Кружка, которую хочется обнять двумя руками." },
-      ]},
-      { icon:"candle", k:"Ритуал", img:IMG.candleMoonPeony, items:[
-        { v:"Свечи и плед", why:"Приглуши свет, зажги свечи, отложи экран — и вечер сразу станет другим." },
-      ]},
-      { icon:"spark", k:"Занятие", img:IMG.puzzleSlow, items:[
-        { v:"Пазл или письмо от руки", why:"Медленное офлайн-дело для рук, пока голова отдыхает." },
-      ]},
-      { icon:"leaf", k:"Прогулка", items:[
-        { v:"Короткая прогулка под дождём", why:"Зонт, тишина и запах земли после дождя — десять минут, и голова свежее." },
-      ]},
-      { icon:"pin", k:"Кафе", placeQ:"уютная кофейня", items:[
-        { v:"Кофейня с окном на улицу", why:"Смотреть на дождь из тепла с чашкой в руках — найди такое место рядом." },
-      ]},
-      { icon:"flower", k:"Уют", items:[
-        { v:"Толстый свитер и шерстяные носки", why:"Самый честный дресс-код дождливого воскресенья." },
-      ]},
-      { kind:"quote", text:"Дождь — это разрешение никуда не спешить." },
-      { kind:"challenge", text:"Сегодня ни одного плана. Свечи, суп и длинная книга — пусть дождь решает за тебя." },
-    ],
-  },
-  {
-    id:"italian-weekend",
-    badge:"Italian Weekend",
-    title:"Italian Weekend",
-    ru:"Итальянские выходные",
-    accent:"#C06A4C",
-    cover:IMG.panzanellaSea,
-    sub:"La dolce vita — эспрессо, площадь, паста и искусство красивого безделья.",
-    intro:"Итальянские выходные — это про умение жить вкусно и неспешно. Эспрессо стоя у барной стойки, паста из пяти ингредиентов, вечерняя прогулка без цели и закат с бокалом. Эта коллекция собирает кусочек dolce vita, который можно прожить где угодно. Возьми одно — и добавь в день немного юга.",
-    blocks:[
-      { icon:"spark", k:"Фильмы", note:"Италия, красота и медленная жизнь.", items:[
-        { v:"«Великая красота» (La Grande Bellezza)", why:"Рим, ночные террасы и почти болезненная красота обычной жизни." },
-        { v:"«Под солнцем Тосканы»", why:"Тёплая история про дом, виноградники и умение начать заново." },
-      ]},
-      { icon:"wave", k:"Музыка", note:"Голоса итальянских выходных.", img:IMG.vinyl, items:[
-        { v:"Paolo Conte", why:"Хриплый бархат и аккордеон — звук вечерней площади." },
-        { v:"Mina", why:"Большой итальянский голос для большого настроения." },
-      ]},
-      { icon:"book", k:"Книга", img:IMG.balconyEveningBook, items:[
-        { v:"«Мой гениальный друг», Элена Ферранте", why:"Неаполь, дружба и жизнь во всю силу — затягивает с первой страницы." },
-        { v:"«Незримые города», Итало Кальвино", why:"Маленькие города-сны — по одному перед сном." },
-      ]},
-      { icon:"leaf", k:"Рецепт", img:IMG.burrataPeach, items:[
-        { v:"Брускетта с томатами", why:"Хлеб, чеснок, спелые помидоры и базилик — лёгкий вечер на балконе." },
-      ]},
-      { icon:"cup", k:"Напиток", items:[
-        { v:"Апероль шприц на закате", why:"Оранжевый бокал, оливки и тёплый вечер — самый итальянский ритуал." },
-      ]},
-      { icon:"pin", k:"Кафе", placeQ:"кофейня эспрессо", img:IMG.espressoStone, items:[
-        { v:"Эспрессо стоя у стойки", why:"По-итальянски — быстрый крепкий эспрессо у бара, а не навынос. Найди рядом." },
-      ]},
-      { icon:"leaf", k:"Прогулка", img:IMG.fruitMarketStall, items:[
-        { v:"Рынок и самые ароматные томаты", why:"Выбирай тяжёлые и душистые у плодоножки — основа любого итальянского стола." },
-      ]},
-      { icon:"candle", k:"Ритуал", items:[
-        { v:"Passeggiata — вечерняя прогулка", why:"Медленная прогулка после ужина без всякой цели — поздороваться с городом." },
-      ]},
-      { icon:"flower", k:"Аромат", items:[
-        { v:"Бергамот, инжир и томатный лист", why:"Свежие средиземноморские цитрусы — например, Acqua di Parma Colonia." },
-      ]},
-      { icon:"sun", k:"Образ дня", items:[
-        { v:"Лён, золото и красная помада", why:"Простая база плюс один яркий акцент — и образ звучит по-итальянски." },
-      ]},
-      { kind:"quote", text:"Dolce far niente — сладость прекрасного безделья." },
-      { kind:"challenge", text:"Устрой себе passeggiata: медленная прогулка без цели после ужина, как в маленьком итальянском городке." },
-    ],
-  },
-  {
-    id:"forest-bathing",
-    badge:"Forest Bathing",
-    title:"Forest Bathing",
-    ru:"Лесная тишина",
-    accent:"#6E8E5E",
-    cover:IMG.forest,
-    sub:"Синрин-йоку — медленная прогулка среди деревьев, которая выключает спешку.",
-    intro:"В Японии это называют синрин-йоку — «купание в лесу». Медленная прогулка среди деревьев без цели и наушников ощутимо снижает стресс: пульс ровнее, мысли тише, дыхание глубже. Эта коллекция — про то, как вернуть себе лесную тишину, даже если до настоящего леса далеко. Возьми одно и побудь среди зелени.",
-    blocks:[
-      { icon:"leaf", k:"Практика", note:"Главное — медленно и всеми чувствами.", img:IMG.forestLightBeam, items:[
-        { v:"Синрин-йоку: медленная прогулка", why:"Без маршрута и цели: замечай свет, запахи и звуки, останавливайся просто так." },
-      ]},
-      { icon:"wave", k:"Музыка", note:"Звук, похожий на лес.", img:IMG.vinylShelfPlants, items:[
-        { v:"Brian Eno — Music for Airports", why:"Эмбиент-классика, в которой можно раствориться без остатка." },
-        { v:"Hammock", why:"Огромные тёплые звуковые пейзажи — как туман между деревьями." },
-      ]},
-      { icon:"book", k:"Книга", img:IMG.libraryRoom, items:[
-        { v:"«Тайная жизнь деревьев», Петер Воллебен", why:"После неё лес уже не выглядит просто фоном — он живой." },
-        { v:"«Уолден», Генри Торо", why:"Год наедине с природой и мыслями — медленное, важное чтение." },
-      ]},
-      { icon:"cup", k:"Чай", img:IMG.teapot, items:[
-        { v:"Травяной чай в термосе", why:"Возьми с собой — пауза с тёплой кружкой посреди прогулки бесценна." },
-      ]},
-      { icon:"spark", k:"Фильмы", items:[
-        { v:"«Жил-был лес» (документальный)", why:"Медленная красота леса без слов — почти медитация." },
-        { v:"«Наша маленькая сестра», Корээда", why:"Нежное японское кино про сезоны, дом и тихую близость." },
-      ]},
-      { icon:"sun", k:"Дыхание", items:[
-        { v:"Дыхание под кронами", why:"Несколько медленных глубоких вдохов запаха хвои и земли — и плечи опускаются." },
-      ]},
-      { icon:"pin", k:"Место", placeQ:"лес", items:[
-        { v:"Ближайший лес или большой парк", why:"Даже городской парк работает — главное, чтобы вокруг были деревья. Найди рядом." },
-      ]},
-      { icon:"candle", k:"Ритуал", img:IMG.bark, items:[
-        { v:"Пять минут босиком по траве", why:"Заземление: сними обувь и просто постой на земле — древнее и очень тихое." },
-      ]},
-      { icon:"leaf", k:"Сбор", items:[
-        { v:"Маленький гербарий", why:"Собери пару листьев, шишку или кору — забрать кусочек тишины домой." },
-      ]},
-      { icon:"flower", k:"Аромат", items:[
-        { v:"Кедр, мох и земля после дождя", why:"Землистые, хвойные ноты возвращают в лес даже в городе." },
-      ]},
-      { kind:"quote", text:"Лес ничего не просит — только чтобы ты замедлился." },
-      { kind:"challenge", text:"20 минут в лесу или парке — без наушников и телефона. Просто смотри, слушай и дыши." },
-    ],
-  },
-  {
-    id:"museum-day",
-    badge:"Museum Day",
-    title:"Museum Day",
-    ru:"День в музее",
-    accent:"#B98A3E",
-    cover:IMG.mind_art1,
-    sub:"Медленный день вокруг искусства — один зал, блокнот и кофе после.",
-    intro:"День в музее — это не марафон по залам, а медленное смотрение. Один музей, несколько работ, у которых хочется постоять по-настоящему, блокнот для впечатлений и кофе после. Так насмотренность растёт тихо и без спешки. Возьми одно из этого — и проведи день в красоте.",
-    blocks:[
-      { icon:"spark", k:"Что смотреть", note:"Не весь музей, а несколько работ — медленно.", img:IMG.satinArt, items:[
-        { v:"Импрессионисты вживую", why:"Моне и Ренуар писали свет, а не предметы — вблизи это видно совсем иначе." },
-        { v:"Одна любимая эпоха", why:"Выбери зал, который откликается, и побудь только в нём." },
-      ]},
-      { icon:"book", k:"Книга", img:IMG.libraryRoom, items:[
-        { v:"«Искусство видеть», Джон Бёрджер", why:"Меняет то, как ты вообще смотришь на картины." },
-        { v:"«История искусства», Эрнст Гомбрих", why:"Тёплый и понятный путеводитель по всему, что висит на стенах." },
-      ]},
-      { icon:"spark", k:"Фильмы", items:[
-        { v:"«Девушка с жемчужной серёжкой»", why:"Тихая история о Вермеере, свете и взгляде." },
-        { v:"«Фрида»", why:"Цвет, боль и сила одной из самых ярких художниц XX века." },
-      ]},
-      { icon:"wave", k:"Музыка", items:[
-        { v:"Debussy — Clair de Lune", why:"Импрессионизм в звуке — идеально под медленный зал." },
-        { v:"Erik Satie", why:"Прозрачное фортепиано, которое не спорит с картинами." },
-      ]},
-      { icon:"candle", k:"Ритуал", img:IMG.letters, items:[
-        { v:"Блокнот впечатлений", why:"Выпиши три работы, которые тронули, и по строке — почему." },
-      ]},
-      { icon:"pin", k:"Кафе", placeQ:"кофейня", img:IMG.latteLakePeony, items:[
-        { v:"Кофе и блокнот после музея", why:"Дай впечатлениям осесть за чашкой — найди тихую кофейню рядом." },
-      ]},
-      { icon:"leaf", k:"Прогулка", items:[
-        { v:"Домой пешком, обдумывая увиденное", why:"Лучшие мысли приходят на ходу, пока картины ещё стоят перед глазами." },
-      ]},
-      { icon:"flower", k:"Аромат", items:[
-        { v:"Старая бумага, дерево и воск", why:"Тёплая библиотечная атмосфера — продлить настроение галереи дома." },
-      ]},
-      { icon:"sun", k:"Образ дня", items:[
-        { v:"Минимализм и одна деталь", why:"Спокойная база и один акцент — чтобы не спорить с искусством на стенах." },
-      ]},
-      { kind:"quote", text:"Искусство смывает с души пыль повседневности." },
-      { kind:"challenge", text:"Сходи в музей на один час и выбери всего три работы. Постой у каждой не меньше минуты — по-настоящему." },
-    ],
-  },
-  {
-    id:"golden-hour",
-    badge:"Golden Hour",
-    title:"Golden Hour",
-    ru:"Золотой час",
-    accent:"#D08A3C",
-    cover:IMG.sunsetSky,
-    sub:"Час перед закатом, когда тёплый свет делает красивым вообще всё.",
-    intro:"Золотой час — короткое окно перед закатом, когда свет становится тёплым, мягким и всё прощающим. Лица красивее, улицы кинематографичнее, бокал на столе сияет. Эта коллекция — про то, как не пропустить этот час и прожить его медленно. Возьми одно и выйди на свет.",
-    blocks:[
-      { icon:"sun", k:"Свет", note:"Лови час до заката.", items:[
-        { v:"Поймай золотой час", why:"За час до заката выйди туда, где света много — и смотри, как он меняется." },
-      ]},
-      { icon:"spark", k:"Фильмы", items:[
-        { v:"«Перед закатом» (Before Sunset)", why:"Весь фильм — один золотой час прогулки по Парижу." },
-        { v:"«Древо жизни», Терренс Малик", why:"Мастер тёплого света — кино, будто снятое на закате." },
-      ]},
-      { icon:"wave", k:"Музыка", img:IMG.vinyl, items:[
-        { v:"Khruangbin", why:"Тёплый, ленивый грув — будто солнце на коже." },
-        { v:"Bonobo", why:"Мягкая электроника для долгого тёплого вечера." },
-      ]},
-      { icon:"cup", k:"Напиток", img:IMG.parisChampagne, items:[
-        { v:"Бокал на закат", why:"Белое или розе у окна, на крыше или на траве — встретить уходящий свет." },
-      ]},
-      { icon:"book", k:"Книга", items:[
-        { v:"«О фотографии», Сьюзен Сонтаг", why:"О том, почему нам так хочется поймать красивый момент в кадр." },
-        { v:"Мэри Оливер, стихи", why:"Поэзия про свет, траву и внимание — точно в настроение." },
-      ]},
-      { icon:"pin", k:"Место", placeQ:"смотровая площадка", img:IMG.greekSunset, items:[
-        { v:"Крыша, холм или набережная", why:"Любая открытая точка на закат — найди такую рядом и приходи заранее." },
-      ]},
-      { icon:"leaf", k:"Прогулка", img:IMG.sunsetSilhouette, items:[
-        { v:"Медленно в сторону солнца", why:"Иди на запад без цели, пока небо меняет цвет." },
-      ]},
-      { icon:"candle", k:"Ритуал", items:[
-        { v:"Один кадр — и убери телефон", why:"Сделай единственный снимок заката и спрячь телефон — остальное проживи глазами." },
-      ]},
-      { icon:"flower", k:"Аромат", items:[
-        { v:"Тёплое дерево и сухие травы", why:"Сухой золотистый аромат конца дня." },
-      ]},
-      { kind:"quote", text:"У света есть всего час, когда он прощает всё." },
-      { kind:"challenge", text:"Сегодня выйди за час до заката и смотри, как меняется свет. Один кадр — и убери телефон." },
-    ],
-  },
-  {
-    id:"japanese-calm",
-    badge:"Japanese Calm",
-    title:"Japanese Calm",
-    ru:"Японский покой",
-    accent:"#7C8576",
-    cover:IMG.teapot,
-    sub:"Ваби-саби и тишина — красота несовершенного и пустого пространства.",
-    intro:"Японский покой держится на двух идеях: ваби-саби — красота несовершенного и скромного, и «ма» — ценность пустоты и паузы. Это про то, чтобы делать одно дело за раз, медленно заваривать чай и оставлять в дне немного «ничего». Возьми одно — и в дне станет тише.",
-    blocks:[
-      { icon:"spark", k:"Философия", note:"Две идеи, на которых всё держится.", img:IMG.kintsugi, items:[
-        { v:"Ваби-саби", why:"Красота трещин, патины и простоты — то, что несовершенно, и потому живо." },
-        { v:"Кинцуги", why:"Чинить разбитое золотом — с уважением к истории, а не пряча её." },
-      ]},
-      { icon:"cup", k:"Чай", img:IMG.ceramic, items:[
-        { v:"Завари чай медленно", why:"Одно действие за раз, полное внимание — самая простая медитация." },
-      ]},
-      { icon:"book", k:"Книга", items:[
-        { v:"«Похвала тени», Дзюнъитиро Танидзаки", why:"Изящное эссе о красоте полумрака и сдержанности." },
-        { v:"«Книга чая», Окакура Какудзо", why:"Маленькая классика о чае как философии простоты." },
-      ]},
-      { icon:"wave", k:"Музыка", items:[
-        { v:"Joe Hisaishi", why:"Музыка Гибли — нежная, как утренний туман." },
-        { v:"Hiroshi Yoshimura", why:"Японский эмбиент «Green» — звук покоя и воды." },
-      ]},
-      { icon:"spark", k:"Фильмы", items:[
-        { v:"«Токийская повесть», Одзу", why:"Тихое медленное кино о семье и времени — образец покоя." },
-        { v:"«Ходячий замок», Миядзаки", why:"Тёплая сказка с дыханием и паузами." },
-      ]},
-      { icon:"candle", k:"Ритуал", items:[
-        { v:"Ма — оставь немного пустоты", why:"Не заполняй каждый промежуток дня. Пауза — тоже часть красоты." },
-      ]},
-      { icon:"pin", k:"Место", placeQ:"японский сад", items:[
-        { v:"Сад, парк камней или чайная", why:"Тихое место с зеленью и водой — найди ближайшее и побудь в тишине." },
-      ]},
-      { icon:"leaf", k:"Еда", items:[
-        { v:"Простой завтрак", why:"Рис, мисо и зелёный чай — еда, в которой нет ничего лишнего." },
-      ]},
-      { icon:"flower", k:"Аромат", items:[
-        { v:"Хиноки, зелёный чай и дерево", why:"Чистые спокойные ноты японского дома." },
-      ]},
-      { kind:"quote", text:"Пустота — не отсутствие, а место, где может что-то случиться." },
-      { kind:"challenge", text:"Сегодня делай одно дело за раз — медленно и с полным вниманием. Начни с чашки чая." },
-    ],
-  },
-  {
-    id:"creative-day",
-    badge:"Creative Day",
-    title:"Creative Day",
-    ru:"Творческий день",
-    accent:"#B56F66",
-    cover:IMG.slowGlowPaint,
-    sub:"День сделать что-то руками — ради процесса, а не результата.",
-    intro:"Творческий день — это разрешение делать что-то руками просто так. Акварель, глина, коллаж, леттеринг: важен не итог, а сам процесс, в котором голова отдыхает, а время растворяется. Никто не должен это увидеть. Возьми одно — и дай рукам поиграть.",
-    blocks:[
-      { icon:"spark", k:"Практика", note:"Главное правило — не оценивать.", img:IMG.easelSeaPaint, items:[
-        { v:"Сделай что-то руками", why:"Акварель, глина или коллаж — важен процесс, а не результат." },
-      ]},
-      { icon:"flower", k:"Акварель", items:[
-        { v:"20 минут акварели", why:"Просто води кистью и смотри, как растекается цвет — без задачи и плана." },
-      ]},
-      { icon:"book", k:"Книга", items:[
-        { v:"«Кради как художник», Остин Клеон", why:"Лёгкая и заряжающая — снимает страх чистого листа." },
-        { v:"«Путь художника», Джулия Кэмерон", why:"Классика про то, как вернуть себе творчество." },
-      ]},
-      { icon:"wave", k:"Музыка", items:[
-        { v:"Ludovico Einaudi", why:"Минималистичное фортепиано, под которое легко войти в поток." },
-        { v:"GoGo Penguin", why:"Живой ритмичный джаз для рук, которые что-то делают." },
-      ]},
-      { icon:"spark", k:"Фильмы", items:[
-        { v:"«Полночь в Париже»", why:"О художниках, вдохновении и любви к творчеству." },
-        { v:"«Тайная жизнь Уолтера Митти»", why:"О смелости выйти за рамки и начать жить ярче." },
-      ]},
-      { icon:"leaf", k:"Ремесло", img:IMG.ceramic, items:[
-        { v:"Керамика или леттеринг", why:"Попробуй новое медиа — руки в глине успокаивают лучше всего." },
-      ]},
-      { icon:"candle", k:"Ритуал", items:[
-        { v:"Отключи внутреннего критика", why:"На час запрети себе оценивать сделанное. Просто делай." },
-      ]},
-      { icon:"pin", k:"Кафе", placeQ:"кофейня", items:[
-        { v:"Кофейня для скетчинга", why:"Блокнот, кофе и наблюдение за людьми — найди уютное место рядом." },
-      ]},
-      { icon:"sun", k:"Материалы", items:[
-        { v:"Купи одну новую краску", why:"Маленькая радость — новый цвет или бумага запускают желание творить." },
-      ]},
-      { kind:"quote", text:"Творчество — это смелость потратить время будто бы ни на что." },
-      { kind:"challenge", text:"Сегодня 20 минут делай что-то руками без цели и оценки. Никто не должен это увидеть." },
-    ],
-  },
-];
-const capsuleById = (id) => CAPSULES.find(c=>c.id===id) || CAPSULES[0];
-
-function CollectionView({ ch, data, city, onClose }){
-  const acc = data.accent || ch.partner;
-  const ymaps = (term)=>"https://yandex.ru/maps/?text="+encodeURIComponent(term+" "+(city||"Москва"));
-  return (
-    <OverlayShell partner={acc} label={"КОЛЛЕКЦИЯ · "+String(data.title).toUpperCase()} onClose={onClose}>
-      <div style={{ position:"relative", borderRadius:20, overflow:"hidden", marginBottom:16 }}>
-        <Photo t={0} url={data.cover} h={220} radius={0}>
-          <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.12) 0%, transparent 32%, rgba(26,26,26,0.66) 100%)" }}/>
-        </Photo>
-        <span style={{ position:"absolute", top:12, left:12, background:`linear-gradient(135deg, ${C.butter}, ${acc})`, borderRadius:99, padding:"5px 12px", fontFamily:head, fontSize:9.5, letterSpacing:"0.12em", color:C.ink }}>КОЛЛЕКЦИЯ НЕДЕЛИ</span>
-        <div style={{ position:"absolute", left:16, right:16, bottom:14 }}>
-          <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:34, color:"#fff", lineHeight:1.05, textShadow:"0 2px 14px rgba(26,26,26,0.5)" }}>{data.title}</div>
-          <div style={{ fontFamily:head, fontSize:11, letterSpacing:"0.08em", color:"rgba(255,255,255,0.9)", marginTop:5 }}>{data.ru}</div>
-        </div>
-      </div>
-      <p style={{ fontSize:14.5, lineHeight:1.7, color:C.ink, margin:"0 0 8px" }}>{data.intro}</p>
-      <div style={{ height:1, background:C.line, margin:"18px 0 4px" }}/>
-
-      {data.blocks.map((b,i)=>{
-        if(b.kind==="quote"){
-          return (
-            <div key={i} style={{ position:"relative", borderRadius:18, padding:"20px 20px 20px 26px", margin:"18px 0", background:`linear-gradient(125deg, ${C.butter}2e, ${acc}1f 60%, rgba(255,255,255,0.4))`, border:`1px solid ${C.line}` }}>
-              <div style={{ position:"absolute", left:0, top:14, bottom:14, width:4, borderRadius:99, background:acc }}/>
-              <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, lineHeight:1.4, color:C.ink, margin:0 }}>{b.text}</p>
-            </div>
-          );
-        }
-        if(b.kind==="challenge"){
-          return (
-            <div key={i} style={{ borderRadius:18, padding:"16px 18px", margin:"18px 0 6px", background:`linear-gradient(120deg, ${C.butter}, ${acc} 78%)`, boxShadow:`0 16px 34px -26px ${acc}` }}>
-              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:6 }}><Sparkles size={14} strokeWidth={2} color="#1A1A1A"/><span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.14em", textTransform:"uppercase", color:"#1A1A1A", fontWeight:600 }}>Мини-задание</span></div>
-              <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:17.5, lineHeight:1.4, color:"#1A1A1A", margin:0 }}>{b.text}</p>
-            </div>
-          );
-        }
-        return (
-          <div key={i} style={{ margin:"20px 0 0" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:b.note?3:9 }}>
-              <span style={{ width:34, height:34, flexShrink:0, borderRadius:11, background:`${acc}1f`, display:"flex", alignItems:"center", justifyContent:"center" }}><BrandIcon name={b.icon} size={18} color={acc} stroke={1.6}/></span>
-              <span style={{ fontFamily:head, fontSize:11, letterSpacing:"0.12em", textTransform:"uppercase", color:C.ink }}>{b.k}</span>
-            </div>
-            {b.note && <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 10px 43px", lineHeight:1.45 }}>{b.note}</p>}
-            {b.img && <div style={{ margin:"4px 0 12px" }}><Photo t={i%6} url={b.img} h={150} radius={14}/></div>}
-            <div>
-              {b.items.map((it,j)=>{
-                const inner=(
-                  <div style={{ borderLeft:`2px solid ${acc}55`, paddingLeft:13, margin:"0 0 12px" }}>
-                    <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
-                      <div style={{ fontFamily:serif, fontSize:17, color:C.ink, lineHeight:1.25 }}>{it.v}</div>
-                      {b.placeQ && <span style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:4, fontFamily:head, fontSize:10.5, letterSpacing:"0.04em", color:acc }}><MapPin size={13} strokeWidth={1.9}/> рядом</span>}
-                    </div>
-                    {it.why && <p style={{ fontSize:13, color:C.inkSoft, margin:"4px 0 0", lineHeight:1.5 }}>{it.why}</p>}
-                  </div>
-                );
-                return b.placeQ
-                  ? <a key={j} href={ymaps(b.placeQ)} target="_blank" rel="noopener noreferrer" style={{ display:"block", textDecoration:"none" }}>{inner}</a>
-                  : <div key={j}>{inner}</div>;
-              })}
-            </div>
-          </div>
-        );
-      })}
-
-      <ShareList ch={ch} data={data}/>
-      <div style={{ height:1, background:C.line, margin:"22px 0 14px" }}/>
-      <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:14, color:C.inkFaint, textAlign:"center", margin:0 }}>Slow Glow · твой куратор красивой жизни ✦</p>
-    </OverlayShell>
-  );
-}
-function Collections_({ ch, onOpen }){
-  return (
-    <div>
-      <Label>Коллекции</Label>
-      <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:34, lineHeight:1.06, margin:"6px 0 8px", color:C.ink }}>Сценарии<br/>красивой жизни</h1>
-      <p style={{ fontSize:14, lineHeight:1.7, color:C.inkSoft, margin:"0 0 12px" }}>Здесь не бывает случайных рекомендаций. Каждая коллекция — выверенный сценарий целого дня: фильм, музыка, книга, аромат, место и ритуал. Только то, что точно ложится в твою эстетику.</p>
-      <div style={{ display:"inline-flex", alignItems:"center", gap:7, marginBottom:24, padding:"6px 13px", borderRadius:99, background:`${ch.partner}1f`, border:`1px solid ${C.line}` }}>
-        <span style={{ fontSize:12, color:ch.partner }}>✦</span>
-        <span style={{ fontFamily:head, fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink }}>Отобрано вручную · ничего случайного</span>
-      </div>
-
-      {CAPSULES.map((c,i)=>{
-        const acc = c.accent || ch.partner;
-        return (
-          <button key={c.id} onClick={()=>onOpen(c)} className="pop" style={{ display:"block", width:"100%", textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", padding:0, borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:i<CAPSULES.length-1?26:8, boxShadow:`0 22px 46px -32px ${acc}` }}>
-            <div style={{ position:"relative" }}>
-              <Photo t={i%6} url={c.cover} h={194} radius={0}>
-                <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.06) 0%, transparent 45%, rgba(26,26,26,0.30) 100%)" }}/>
-              </Photo>
-              <span style={{ position:"absolute", top:12, left:12, display:"inline-flex", alignItems:"center", gap:6, background:"rgba(250,248,241,0.92)", borderRadius:99, padding:"5px 12px", fontFamily:head, fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase", color:C.ink }}><span style={{ width:6, height:6, borderRadius:99, background:acc }}/>{c.ru}</span>
-            </div>
-            <div style={{ padding:"16px 18px 18px" }}>
-              <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:26, color:C.ink, lineHeight:1.12 }}>{c.title}</div>
-              <p style={{ fontSize:13, lineHeight:1.55, color:C.inkSoft, margin:"7px 0 0" }}>{c.sub}</p>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:13, fontFamily:head, fontSize:11, letterSpacing:"0.06em", color:acc }}>Открыть коллекцию <ArrowRight size={14} strokeWidth={2}/></div>
-            </div>
-          </button>
-        );
-      })}
-
-      <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:14, color:C.inkFaint, textAlign:"center", margin:"18px 0 4px" }}>Собрано редакцией Slow Glow ✦ Новые коллекции каждую неделю</p>
-    </div>
-  );
-}
 function MindView({ ch, onClose, toggleSave, isSaved }) {
   const [sel, setSel] = useState(null);
   const order = sgSpread(pick(MIND.map((_,i)=>i), MIND.length, 3), (i)=>MIND[i].k);
@@ -4397,7 +3282,6 @@ function MindView({ ch, onClose, toggleSave, isSaved }) {
           ); })()}
         </div>
         <p style={{ fontSize:15, lineHeight:1.7, color:C.ink, margin:0, whiteSpace:"pre-line" }}>{a.body}</p>
-        <ShareFact a={a} ch={ch} />
         <button onClick={()=>setSel(null)} style={{ marginTop:22, display:"inline-flex", alignItems:"center", gap:7, border:"none", background:"transparent", cursor:"pointer", fontFamily:head, fontSize:12, letterSpacing:"0.06em", color:ch.partner }}><ArrowLeft size={15} strokeWidth={2}/> ко всем темам</button>
       </OverlayShell>
     );
@@ -4453,7 +3337,7 @@ function AddPlace({ ch, city, editing, onClose, onSave }) {
   const [photo, setPhoto] = useState(editing?.photo || null);
   const fileRef = useRef(null);
   const TYPES = ["Кафе","Ресторан","Бар","Кофейня","Парк","Магазин","Другое"];
-  const onFile = (e) => { const f = e.target.files && e.target.files[0]; if(!f) return; shrinkImage(f,1280,0.82).then(url=>setPhoto(url)).catch(()=>{}); };
+  const onFile = (e) => { const f = e.target.files && e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = () => setPhoto(r.result); r.readAsDataURL(f); };
   const canSave = name.trim().length > 0;
   const save = () => { if(!canSave) return; onSave({ id:editing?.id || Date.now(), name:name.trim(), type, desc:desc.trim(), addr:addr.trim(), photo, city:city||editing?.city||"", date:editing?.date || new Date().toLocaleDateString("ru-RU",{day:"numeric",month:"long"}) }); };
   const inputStyle = { width:"100%", boxSizing:"border-box", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.7)", borderRadius:13, padding:"12px 14px", fontSize:14.5, fontFamily:body, color:C.ink, outline:"none" };
@@ -4816,6 +3700,7 @@ function PinReality({ ch, dna, onClose }) {
     if (!imgs.length || busy) return; setBusy(true);
     try {
       const content = imgs.slice(0,6).map(im=>({ type:"image", source:{ type:"base64", media_type:im.media, data:im.b64 } }));
+      for(let _i=0;_i<content.length;_i++){ content[_i]=await sgShrinkBlock(content[_i]); }
       content.push({ type:"text", text:'Это мои сохранённые картинки желаемой эстетики жизни. Проанализируй их вместе и верни ТОЛЬКО JSON без markdown по-русски: {"patterns":[6 коротких повторяющихся образов или объектов],"seeking":[5 чувств или ценностей, которые я на самом деле ищу за этими картинками],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький шаг на сегодня","week":[3 мягких внедрения на неделю],"month":[5 изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности.' });
       const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:900, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется. Пиши во втором лице, тепло и лично — как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
       const data = await r.json();
@@ -4871,7 +3756,6 @@ function PinReality({ ch, dna, onClose }) {
       <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:20 }}>{D.seeking.map(p=><span key={p}>{chip(p, `${ch.partner}33`)}</span>)}</div>
 
       <ShareReality ch={ch} D={D}/>
-      <ShareBoard ch={ch} imgs={imgs} D={D}/>
 
       <Label>Что у тебя уже есть</Label>
       <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Ты ближе к этой жизни, чем кажется. Это уже с тобой.</p>
@@ -5290,13 +4174,14 @@ function StylistView({ ch, profile, wardrobe, setWardrobe, onClose }) {
   const [aiBusy, setAiBusy] = useState(false);
   const onWardrobeFiles = (e) => {
     const fs = Array.from(e.target.files||[]);
-    fs.forEach(f=>{ shrinkImage(f,1024,0.82).then(url=>setWardrobe(prev=>[...prev,{ id:Date.now()+Math.random(), photo:url }])).catch(()=>{}); });
+    fs.forEach(f=>{ const r=new FileReader(); r.onload=()=>setWardrobe(prev=>[...prev,{ id:Date.now()+Math.random(), photo:r.result }]); r.readAsDataURL(f); });
   };
   const buildLooks = async () => {
     if (!wardrobe.length || aiBusy) return;
     setAiBusy(true); setAiLooks("");
     try {
       const imgs = wardrobe.slice(0,10).map(w=>{ const m=(w.photo.match(/^data:(.*?);base64,/)||[])[1]||"image/jpeg"; return { type:"image", source:{ type:"base64", media_type:m, data:w.photo.split(",")[1] } }; });
+      for(let _i=0;_i<imgs.length;_i++){ imgs[_i]=await sgShrinkBlock(imgs[_i]); }
       const sys = `Ты — личный стилист Slow Glow в эстетике ${ch.aes}. Тебе показывают фото вещей из гардероба женщины. Собери из ИМЕННО этих вещей 2–3 готовых образа (лука) под её эстетику. Для каждого: название образа, что с чем надеть из показанного, повод, и один совет по аксессуарам или обуви, чтобы дополнить. Если чего-то не хватает — мягко предложи одну вещь докупить. Тёплый живой русский, без markdown и звёздочек.`;
       const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1100, system:sys, messages:[{ role:"user", content:[...imgs, { type:"text", text:"Собери образы из этих вещей под мою эстетику." }] }] }) });
       const data = await r.json();
@@ -5951,53 +4836,15 @@ function PetsView({ ch, onClose, pet }) {
 }
 
 // ── LANGUAGES ─────────────────────────────────────────────────────
-// Банки лексики по уровням на каждый язык (статически, не зависят от ИИ).
-// mid — изысканная лексика уровня B2–C1 (Средний); adv — редкая/книжная/идиоматичная C1–C2 (Продвинутый).
-// Тематически в духе медленной красивой жизни, чтобы подходить к любой теме урока.
-const LANG_VOCAB = {
-  "Французский": {
-    mid: [["flâner","гулять без цели, фланировать"],["la quiétude","безмятежность, покой"],["s'attarder","медлить, задерживаться"],["chaleureux","тёплый, радушный"],["le crépuscule","сумерки"],["savourer","смаковать, наслаждаться"],["feutré","приглушённый, мягкий"],["l'écrin","уютное обрамление; шкатулка"]],
-    adv: [["la sérénité","безмятежность"],["ineffable","невыразимый"],["se languir","томиться, тосковать"],["le clair-obscur","светотень"],["entêtant","дурманящий, навязчивый (об аромате)"],["l'oisiveté","праздность"],["chatoyant","переливчатый, искрящийся"],["le ravissement","упоение, восхищение"]],
-  },
-  "Английский": {
-    mid: [["to linger","медлить, задерживаться"],["serene","безмятежный"],["to savour","смаковать"],["cosy","уютный"],["dusk","сумерки"],["unhurried","неспешный"],["mellow","мягкий, тёплый (о свете)"],["a respite","передышка"]],
-    adv: [["quietude","безмятежность, тишина"],["ineffable","невыразимый"],["to meander","блуждать, петлять"],["sumptuous","роскошный"],["wistful","тоскливо-задумчивый"],["idleness","праздность"],["luminous","лучезарный, светящийся"],["reverie","грёзы, мечтательность"]],
-  },
-  "Итальянский": {
-    mid: [["indugiare","медлить, задерживаться"],["la quiete","покой, тишина"],["assaporare","смаковать"],["accogliente","уютный, гостеприимный"],["il crepuscolo","сумерки"],["pacato","спокойный, размеренный"],["soffuso","рассеянный, мягкий (о свете)"],["la lentezza","медлительность"]],
-    adv: [["la serenità","безмятежность"],["ineffabile","невыразимый"],["struggersi","томиться, тосковать"],["il chiaroscuro","светотень"],["inebriante","опьяняющий, дурманящий"],["l'ozio","праздность, досуг"],["cangiante","переливчатый"],["il rapimento","упоение, восторг"]],
-  },
-  "Испанский": {
-    mid: [["demorarse","медлить, задерживаться"],["el sosiego","покой, безмятежность"],["saborear","смаковать"],["acogedor","уютный"],["el crepúsculo","сумерки"],["pausado","неспешный, размеренный"],["tenue","мягкий, приглушённый (о свете)"],["la calma","спокойствие"]],
-    adv: [["la serenidad","безмятежность"],["inefable","невыразимый"],["añorar","тосковать, скучать"],["el claroscuro","светотень"],["embriagador","опьяняющий, дурманящий"],["el ocio","досуг, праздность"],["tornasolado","переливчатый"],["el arrobamiento","упоение, восхищение"]],
-  },
-};
-function _dedupWords(arr){ const seen=new Set(); const out=[]; for(const w of arr){ if(!w||!w[0]||!w[1]) continue; const k=String(w[0]).toLowerCase().trim(); if(seen.has(k)) continue; seen.add(k); out.push(w); } return out; }
-// Полная неделя тем на язык: день 1 — флагманская тема (themed), дни 2–7 — из LANG_WEEK_EXTRA.
-// Темы сменяются по дням (ротация по seedToday), на всех языках, и весь контент уже на месте.
-function langWeekPool(s){
-  if (!s) return null;
-  if (s.journeys) return s.journeys;
-  if (s.week) return s.week;
-  const extra = LANG_WEEK_EXTRA[s.n] || [];
-  return s.themed ? [s.themed].concat(extra) : (extra.length ? extra : null);
-}
-
-function wordsFor(th, lvl, lang){
+function wordsFor(th, lvl){
   if (th && th.wl && th.wl[lvl]) return th.wl[lvl];
   const ws = ((th&&th.words)||[]).filter(w=>w&&w[0]&&w[1]);
-  const bank = LANG_VOCAB[lang] || { mid:[], adv:[] };
-  if (lvl==="Начальный"){
-    if (ws.length < 5) return ws;
-    const byLen = [...ws].sort((a,b)=> String(a[0]).length - String(b[0]).length);
-    return byLen.slice(0,5); // самые простые слова темы
-  }
-  if (lvl==="Продвинутый"){
-    const adv = (th && th.wlAdv && th.wlAdv.length) ? th.wlAdv : [];
-    return _dedupWords(ws.concat(adv).concat(bank.adv||[])).slice(0,16); // тема + продвинутая лексика
-  }
-  // Средний — слова темы + изысканная лексика уровня
-  return _dedupWords(ws.concat(bank.mid||[])).slice(0,14);
+  // Продвинутый: все слова + продвинутая лексика (wlAdv), если есть
+  if (lvl==="Продвинутый") return (th && th.wlAdv && th.wlAdv.length) ? ws.concat(th.wlAdv) : ws;
+  if (ws.length < 5) return ws;
+  const byLen = [...ws].sort((a,b)=> String(a[0]).length - String(b[0]).length);
+  if (lvl==="Начальный") return byLen.slice(0,5);
+  return ws; // Средний — все базовые слова
 }
 // Чтение по уровню: Начальный — короче и проще, Средний — полный текст,
 // Продвинутый — полный текст + продвинутый абзац (readAdv) с изысканной лексикой.
@@ -6102,20 +4949,19 @@ function LangView({ ch, premium, onClose, openPlus }) {
   const [ltShowRu, setLtShowRu] = useState(false);
   useEffect(() => {
     if (!lesson || !sel) { setLongText(null); return; }
-    const _pool = langWeekPool(sel); const day = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
+    const _pool = (sel.journeys || sel.week); const day = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
     if (!day) return;
     let cancelled = false; setLongText(null); setLtBusy(true); setLtShowRu(false);
     (async () => {
       try {
         const sys = `Ты — преподаватель ${sel.n.toLowerCase()} языка и автор эстетичных познавательных текстов в духе медленной красивой жизни (lifestyle Kinfolk, искусство, культура, ритуалы).`;
         const lvlDesc = {"Начальный":"A2–B1 (живые, не примитивные предложения, постепенно усложняющиеся)","Средний":"B2–C1 (богатая, изысканная и небанальная лексика, идиомы, сложные конструкции)","Продвинутый":"C1–C2 (виртуозная литературная лексика, редкие слова, идиомы, тонкие оттенки смысла и сложный синтаксис)"}[lvl] || lvl.toLowerCase();
-        const lenByLvl = {"Начальный":"не меньше 2500 знаков (примерно 400–500 слов), 8–10 полных абзацев","Средний":"не меньше 3200 знаков (примерно 550–650 слов), 10–13 полных абзацев","Продвинутый":"не меньше 4200 знаков (примерно 750–900 слов), 13–16 полных абзацев"}[lvl] || "не меньше 3200 знаков, 10–13 полных абзацев";
-        const prompt = `Напиши связный, насыщенный познавательный текст на ${sel.n.toLowerCase()} языке на тему «${day.theme}», уровень ${lvlDesc}. ОБЪЁМ ОБЯЗАТЕЛЬНО ${lenByLvl}; не сокращай и не обрывай текст, доведи каждую мысль до конца. Сложность лексики и синтаксиса должна СТРОГО соответствовать уровню: чем выше уровень, тем реже, изысканнее и точнее слова и тем сложнее конструкции. Пиши на уровне образованного носителя — со сложным синтаксисом, развёрнутыми периодами, причастными и деепричастными оборотами и редкой книжной лексикой. Тёплый, образный и эрудированный: с конкретными деталями, фактами, культурными и историческими отсылками и живой атмосферой. Сознательно используй богатую, изысканную и небанальную лексику, точные синонимы, идиомы и устойчивые выражения; варьируй конструкции и длину предложений — чтобы читатель встречал интересные и сложные новые слова, но текст всё же оставался по силам его уровню. Не упрощай: там, где уместно, вводи более редкую, книжную и точную лексику, профессиональные и культурные термины, поясняя их через контекст. Избегай примитива, канцелярита, штампов и повторов. Затем дай полный, точный и литературный перевод на русский (тоже целиком, без сокращений). Также подбери 10–12 ключевых слов и выражений ИЗ САМОГО ТЕКСТА — самых небанальных и полезных, со сложностью СТРОГО по уровню (на Начальном — простые, но живые; на Среднем — изысканная лексика B2–C1; на Продвинутом — редкие, книжные и идиоматические выражения C1–C2), каждое с точным переводом на русский. Верни ТОЛЬКО JSON без markdown, без обрезанных строк: {"text":"текст на ${sel.n.toLowerCase()} языке с абзацами через \\n\\n","translation":"перевод на русский с абзацами через \\n\\n","words":[["слово или выражение на ${sel.n.toLowerCase()} языке","перевод на русский"]]}.`;
+        const prompt = `Напиши связный, насыщенный познавательный текст на ${sel.n.toLowerCase()} языке на тему «${day.theme}», уровень ${lvlDesc}. ОБЪЁМ ОБЯЗАТЕЛЬНО не менее 5000 знаков (примерно 850–1000 слов), 11–14 полных абзацев — это две полные страницы; не сокращай и не обрывай текст. Пиши на уровне образованного носителя — со сложным синтаксисом, развёрнутыми периодами, причастными и деепричастными оборотами и редкой книжной лексикой. Тёплый, образный и эрудированный: с конкретными деталями, фактами, культурными и историческими отсылками и живой атмосферой. Сознательно используй богатую, изысканную и небанальную лексику, точные синонимы, идиомы и устойчивые выражения; варьируй конструкции и длину предложений — чтобы читатель встречал интересные и сложные новые слова, но текст всё же оставался по силам его уровню. Не упрощай: там, где уместно, вводи более редкую, книжную и точную лексику, профессиональные и культурные термины, поясняя их через контекст. Избегай примитива, канцелярита, штампов и повторов. Затем дай полный, точный и литературный перевод на русский (тоже целиком, без сокращений). Верни ТОЛЬКО JSON без markdown, без обрезанных строк: {"text":"текст на ${sel.n.toLowerCase()} языке с абзацами через \\n\\n","translation":"перевод на русский с абзацами через \\n\\n"}.`;
         const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:8000, system:sys, messages:[{ role:"user", content:prompt }] }) });
         const d = await r.json();
         let raw = (d.content||[]).filter(x=>x.type==="text").map(x=>x.text).join("").trim();
         const obj = sgParseJSON(raw);
-        if (obj) { if (obj.text) obj.text = stripMd(obj.text); if (obj.translation) obj.translation = stripMd(obj.translation); obj.words = Array.isArray(obj.words) ? obj.words.filter(wd=>Array.isArray(wd)&&wd[0]&&wd[1]).map(wd=>[stripMd(String(wd[0])).trim(), stripMd(String(wd[1])).trim()]).filter(wd=>wd[0]&&wd[1]).slice(0,14) : null; }
+        if (obj) { if (obj.text) obj.text = stripMd(obj.text); if (obj.translation) obj.translation = stripMd(obj.translation); }
         if (!cancelled && obj && obj.text) setLongText(obj);
       } catch(e) { if(!cancelled) setLongText(null); }
       if (!cancelled) setLtBusy(false);
@@ -6206,18 +5052,15 @@ function LangView({ ch, premium, onClose, openPlus }) {
   };
   if (sel && lesson) {
     const tier = "themed";
-    const w = sel.wk1; const _pool = langWeekPool(sel); const th = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
+    const w = sel.wk1; const _pool = (sel.journeys || sel.week); const th = _pool ? _pool[(((seedToday+lessonDay-1)%_pool.length)+_pool.length)%_pool.length] : sel.themed;
     const rd = readFor(th, lvl);
-    // Слова под уровень: если ИИ сгенерил лексику дня (она строго по уровню) — берём её,
-    // иначе откатываемся на статический список темы.
-    const lvlWords = (longText && longText.words && longText.words.length) ? longText.words : wordsFor(th, lvl, sel.n);
     const jStamp = (th && th.city) ? { ru:th.city, lat:th.lat, icon:th.icon, g:th.g } : LANG_STAMP[sel.n];
     const escH = (x) => String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const savePdf = () => {
       const isBasic = tier==="basic";
       const pdfTitle = isBasic ? "Приветствия и кафе" : (th.theme || "Carnet дня");
       const reads = isBasic ? w.greet.map(g=>[g[0],g[1]]) : rd;
-      const wordsArr = isBasic ? w.words : lvlWords;
+      const wordsArr = isBasic ? w.words : (th.words||[]);
       const st = jStamp || LANG_STAMP[sel.n] || { ru:"Slow Glow", lat:"SLOW GLOW", icon:"skyline", g:2 };
       const sg = _CITY_GRAD[st.g] || _CITY_GRAD[0];
       const stIcon = _CITY_ICN[st.icon] || _CITY_ICN.skyline;
@@ -6260,7 +5103,6 @@ function LangView({ ch, premium, onClose, openPlus }) {
         <p style={{ fontFamily:body, fontSize:12.5, lineHeight:1.5, color:C.inkFaint, margin:"6px 0 0" }}>{lvl==="Начальный" ? "Короче и проще — мягкий вход, перевод под рукой." : lvl==="Продвинутый" ? "Длиннее и сложнее — добавлен продвинутый абзац и изысканная лексика, перевод скрыт." : "Полный текст недели в среднем темпе."}</p>
         <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:27, lineHeight:1.12, margin:"6px 0 12px", color:C.ink }}>{tier==="basic" ? "Приветствия и кафе" : th.theme}</h1>
         <button onClick={savePdf} className="pop" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", height:46, marginBottom:18, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:13.5, fontWeight:500 }}><Download size={16} strokeWidth={1.8}/> Сохранить Carnet в PDF</button>
-        <ShareCarnetPage ch={ch} th={th} rd={rd} lang={sel.n} words={lvlWords}/>
         <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, lineHeight:1.5, color:C.inkSoft, textAlign:"center", margin:"-4px 0 18px" }}>Carnet (карне) — дневник путешественника. Ты не зубришь язык, а собираешь жизнь на нём: истории, города, слова и штампы.</p>
         {tier==="basic" ? (
           <>
@@ -6313,7 +5155,7 @@ function LangView({ ch, premium, onClose, openPlus }) {
             </div>
             <Label>Слова · уровень {lvl.toLowerCase()}</Label>
             <div style={{ display:"flex", flexWrap:"wrap", gap:7, margin:"10px 0 20px" }}>
-              {lvlWords.map(wd=><span key={wd[0]} style={{ fontSize:13.5, color:C.ink, background:C.sage, padding:"6px 12px", borderRadius:99 }}><b style={{ fontWeight:600 }}>{wd[0]}</b> — {wd[1]}</span>)}
+              {wordsFor(th, lvl).map(wd=><span key={wd[0]} style={{ fontSize:13.5, color:C.ink, background:C.sage, padding:"6px 12px", borderRadius:99 }}><b style={{ fontWeight:600 }}>{wd[0]}</b> — {wd[1]}</span>)}
             </div>
             <Label>Грамматика</Label>
             <div style={{ margin:"10px 0 20px", background:"rgba(255,255,255,0.55)", border:`1px solid ${C.line}`, borderRadius:14, padding:"13px 15px" }}>
@@ -6327,7 +5169,7 @@ function LangView({ ch, premium, onClose, openPlus }) {
               </div>
               <p style={{ fontSize:13.5, lineHeight:1.6, color:C.ink, margin:0, whiteSpace:"pre-line" }}>{th.grammar}</p>
             </div>
-            <WordTest key={sel.n+"-"+lessonDay+"-"+lvl} words={lvlWords} partner={ch.partner} stamp={jStamp} />
+            <WordTest key={sel.n+"-"+lessonDay+"-"+lvl} words={wordsFor(th, lvl)} partner={ch.partner} stamp={jStamp} />
           </>
         )}
         {tier==="basic" ? (
@@ -6434,10 +5276,10 @@ function LangView({ ch, premium, onClose, openPlus }) {
         <Label color={C.inkFaint}>Журнал · Неделя 1 · уровень {lvl.toLowerCase()}</Label>
         <div style={{ marginTop:10 }}>
           {[1,2,3,4,5,6,7].map(w=>{
-            const _p = langWeekPool(sel); const avail = !!_p || w===1;
+            const _p = (sel.journeys || sel.week); const avail = !!_p || w===1;
             return (
             <button key={w} onClick={()=>{ if(!avail) return; if(!premium){ openPlus(); return; } setLessonDay(w); setLesson(true); }} style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", justifyContent:"space-between", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.55)", borderRadius:14, padding:"12px 15px", marginBottom:9, cursor:avail?"pointer":"default" }}>
-              <div><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink }}>День {w}</div><div style={{ fontSize:12, color:C.inkFaint, marginTop:1 }}>{(()=>{ const p=langWeekPool(sel); return p ? p[(((seedToday+w-1)%p.length)+p.length)%p.length].theme : WEEK_THEMES[w-1]; })()}</div></div>
+              <div><div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink }}>День {w}</div><div style={{ fontSize:12, color:C.inkFaint, marginTop:1 }}>{(()=>{ const p=(sel.journeys||sel.week); return p ? p[(((seedToday+w-1)%p.length)+p.length)%p.length].theme : WEEK_THEMES[w-1]; })()}</div></div>
               {avail ? <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:10, letterSpacing:"0.08em", color:premium?ch.partner:C.inkFaint }}>{premium?"открыть урок":"в Plus"} <ArrowRight size={13} strokeWidth={2}/></span>
                 : <span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.08em", color:C.inkFaint }}>СКОРО</span>}
             </button>
