@@ -1920,15 +1920,15 @@ function DailyEnvelope({ ch, bump }){
 function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel, openLang, openSport, openPets, openMind, openScan, openPin }){
   const tint = [ `${C.sage}66`, `${C.butter}55`, `${C.seaMist}66`, `${C.sand}88` ];
   const T = [
-    { k:"Карта и досуг", d:"Эстетичные места рядом", go:onPlaces, icon:MapPin },
-    { k:"Коллекции", d:"Капсулы красивой жизни", go:onCollections, icon:BookOpen },
-    { k:"Стилист", d:"Образы из твоих вещей", go:openStylist, icon:Sparkles, plus:true },
-    { k:"Путешествия", d:"Куда поехать под эстетику", go:openTravel, icon:Send, plus:true },
-    { k:"Языки", d:"Красивые уроки каждый день", go:openLang, icon:BookOpen },
-    { k:"Спорт", d:"Мягкое движение и корты", go:openSport, icon:Wind },
-    { k:"Рецепты", d:"Ужин из того, что есть", go:openScan, icon:Check, plus:true },
-    { k:"Идеи для ума", d:"Обогащение · тема дня", go:openMind, icon:Play },
-    { k:"Питомцы", d:"Забота и прогулки", go:openPets, icon:Heart },
+    { k:"Карта и досуг", d:"Эстетичные места рядом", go:onPlaces, img:IMG.parisCafe },
+    { k:"Коллекции", d:"Капсулы красивой жизни", go:onCollections, img:IMG.capsuleHangers },
+    { k:"Стилист", d:"Образы из твоих вещей", go:openStylist, img:IMG.mirrorDress, plus:true },
+    { k:"Путешествия", d:"Куда поехать под эстетику", go:openTravel, img:IMG.planeWingSunset, plus:true },
+    { k:"Языки", d:"Красивые уроки каждый день", go:openLang, img:IMG.letters },
+    { k:"Спорт", d:"Мягкое движение и корты", go:openSport, img:IMG.pilatesPark },
+    { k:"Рецепты", d:"Ужин из того, что есть", go:openScan, img:IMG.lemonPasta, plus:true },
+    { k:"Идеи для ума", d:"Обогащение · тема дня", go:openMind, img:IMG.homeLibraryNook },
+    { k:"Питомцы", d:"Забота и прогулки", go:openPets, img:IMG.villageWalk },
   ];
   return (
     <div>
@@ -1945,16 +1945,18 @@ function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel,
         <ArrowRight size={18} strokeWidth={1.8} color="#1A1A1A"/>
       </button>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, paddingBottom:8 }}>
-        {T.map((t,i)=>{ const Ic=t.icon; return (
-          <button key={t.k} onClick={t.go} className={"fade st"+((i%6)+1)} style={{ position:"relative", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:18, padding:"14px 13px 13px", background:tint[i%tint.length], minHeight:96, display:"flex", flexDirection:"column", justifyContent:"space-between", gap:10 }}>
-            {t.plus && !premium && <span style={{ position:"absolute", top:9, right:9, fontFamily:head, fontSize:8.5, letterSpacing:"0.12em", background:"rgba(250,248,241,0.9)", borderRadius:99, padding:"3px 7px", color:C.ink }}>✦ PLUS</span>}
-            <Ic size={19} strokeWidth={1.7} color={ch.partner}/>
-            <div>
-              <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, lineHeight:1.1 }}>{t.k}</div>
-              <div style={{ fontSize:11.5, color:C.inkSoft, marginTop:3, lineHeight:1.35 }}>{t.d}</div>
+        {T.map((t,i)=>(
+          <button key={t.k} onClick={t.go} className={"fade st"+((i%6)+1)} style={{ position:"relative", textAlign:"left", border:"none", cursor:"pointer", borderRadius:18, overflow:"hidden", padding:0, minHeight:118, background:tint[i%tint.length] }}>
+            <Photo t={i%6} url={t.img} h={118} radius={0}>
+              <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.04) 30%, rgba(26,26,26,0.6) 100%)" }}/>
+            </Photo>
+            {t.plus && !premium && <span style={{ position:"absolute", top:9, right:9, fontFamily:head, fontSize:8.5, letterSpacing:"0.12em", background:"rgba(250,248,241,0.92)", borderRadius:99, padding:"3px 7px", color:C.ink }}>✦ PLUS</span>}
+            <div style={{ position:"absolute", left:12, right:12, bottom:10 }}>
+              <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:"#fff", lineHeight:1.1, textShadow:"0 1px 8px rgba(26,26,26,0.6)" }}>{t.k}</div>
+              <div style={{ fontSize:11, color:"rgba(255,255,255,0.88)", marginTop:2.5, lineHeight:1.3, textShadow:"0 1px 6px rgba(26,26,26,0.55)" }}>{t.d}</div>
             </div>
           </button>
-        ); })}
+        ))}
       </div>
     </div>
   );
@@ -3153,29 +3155,7 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
       <p style={{ fontSize:15, lineHeight:1.6, color:C.inkSoft, margin:"6px 0 28px" }}>Доброе утро{profile.name?`, ${profile.name}`:""}. Несколько способов сегодня прожить твою эстетику.</p>
       </div>
       <EditorColumn partner={ch.partner}/>
-      {openLibrary && (
-        <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", margin:"2px 0 10px" }}>
-          <Label>Коллекции</Label>
-          <button onClick={openLibrary} style={{ border:"none", background:"transparent", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:11, letterSpacing:"0.06em", color:ch.partner }}>Смотреть все <ArrowRight size={14} strokeWidth={2}/></button>
-        </div>
-      )}
-      {openCollection && (()=>{ const cap=capsuleById("french-summer"); return (
-        <button onClick={openCollection} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", padding:0, borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:26, boxShadow:`0 18px 40px -26px ${ch.partner}` }}>
-          <Photo t={0} url={cap.cover} h={196} radius={0}>
-            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.10) 0%, transparent 34%, rgba(26,26,26,0.64) 100%)" }}/>
-          </Photo>
-          <span style={{ position:"absolute", top:12, left:12, background:`linear-gradient(135deg, ${C.butter}, ${ch.partner})`, borderRadius:99, padding:"5px 12px", fontFamily:head, fontSize:9.5, letterSpacing:"0.12em", color:C.ink }}>КОЛЛЕКЦИЯ НЕДЕЛИ</span>
-          <div style={{ position:"absolute", left:16, right:16, bottom:14 }}>
-            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:27, color:"#fff", lineHeight:1.08, textShadow:"0 2px 12px rgba(26,26,26,0.5)" }}>{cap.title}</div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginTop:5 }}>
-              <span style={{ fontSize:12.5, color:"rgba(255,255,255,0.92)", lineHeight:1.3 }}>{cap.sub}</span>
-              <ArrowRight size={18} strokeWidth={2} color="#fff" style={{ flexShrink:0 }}/>
-            </div>
-          </div>
-        </button>
-      ); })()}
-      <BeautifulDay ch={ch} />
-      <button onClick={()=>setPin(true)} className="sheen anim-grad" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:20, overflow:"hidden", padding:0, marginTop:16, marginBottom:22, background:`linear-gradient(120deg, ${C.butter}, ${ch.partner} 78%)`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
+      <button onClick={()=>setPin(true)} className="sheen anim-grad" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:20, overflow:"hidden", padding:0, marginTop:4, marginBottom:14, background:`linear-gradient(120deg, ${C.butter}, ${ch.partner} 78%)`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
         <div style={{ display:"flex", alignItems:"center", gap:13, padding:"16px 18px" }}>
           <GlowOrb partner={ch.partner} size={52} />
           <div style={{ flex:1 }}>
@@ -3200,6 +3180,8 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
       )}
       {(streak||0)>0 && (<button onClick={()=>shareStreakCard(ch, streak, "дней красивой жизни подряд")} style={{ display:"flex", alignItems:"center", gap:8, margin:"0 0 10px", padding:"9px 13px", borderRadius:99, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.55)", width:"fit-content", cursor:"pointer" }}><Sparkles size={14} strokeWidth={1.8} color={ch.partner}/><span style={{ fontFamily:head, fontSize:11.5, letterSpacing:"0.04em", color:C.ink }}>Серия красивых дней · {streak}</span><Send size={12} strokeWidth={1.8} color={C.inkFaint}/></button>)}
       <DailyRitual ch={ch} onLive={onLive}/>
+
+      <BeautifulDay ch={ch} />
       {(()=>{ const m=pickOne(MICRO,3); return (
         <div style={{ display:"flex", alignItems:"center", gap:12, borderRadius:16, padding:"13px 15px", marginBottom:18, background:`linear-gradient(110deg, ${m.ac}26, rgba(255,255,255,0.55) 70%)`, border:`1px solid ${C.line}` }}>
           <div style={{ width:8, height:8, borderRadius:99, flexShrink:0, background:m.ac, boxShadow:`0 0 0 4px ${m.ac}33` }}/>
@@ -3243,6 +3225,27 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
         <p style={{ fontSize:12, color:C.inkFaint, margin:"14px 0 0" }}>Это не гонка и не стрики. Полоски растут сами, когда ты живёшь свою эстетику — в своём темпе.</p>
       </div>
 
+      {openLibrary && (
+        <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", margin:"2px 0 10px" }}>
+          <Label>Коллекции</Label>
+          <button onClick={openLibrary} style={{ border:"none", background:"transparent", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:5, fontFamily:head, fontSize:11, letterSpacing:"0.06em", color:ch.partner }}>Смотреть все <ArrowRight size={14} strokeWidth={2}/></button>
+        </div>
+      )}
+      {openCollection && (()=>{ const cap=capsuleById("french-summer"); return (
+        <button onClick={openCollection} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", padding:0, borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:26, boxShadow:`0 18px 40px -26px ${ch.partner}` }}>
+          <Photo t={0} url={cap.cover} h={196} radius={0}>
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.10) 0%, transparent 34%, rgba(26,26,26,0.64) 100%)" }}/>
+          </Photo>
+          <span style={{ position:"absolute", top:12, left:12, background:`linear-gradient(135deg, ${C.butter}, ${ch.partner})`, borderRadius:99, padding:"5px 12px", fontFamily:head, fontSize:9.5, letterSpacing:"0.12em", color:C.ink }}>КОЛЛЕКЦИЯ НЕДЕЛИ</span>
+          <div style={{ position:"absolute", left:16, right:16, bottom:14 }}>
+            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:27, color:"#fff", lineHeight:1.08, textShadow:"0 2px 12px rgba(26,26,26,0.5)" }}>{cap.title}</div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginTop:5 }}>
+              <span style={{ fontSize:12.5, color:"rgba(255,255,255,0.92)", lineHeight:1.3 }}>{cap.sub}</span>
+              <ArrowRight size={18} strokeWidth={2} color="#fff" style={{ flexShrink:0 }}/>
+            </div>
+          </div>
+        </button>
+      ); })()}
       <Divider partner={ch.partner} mt={4} mb={20}/>
       <div style={{ marginTop:12, marginBottom:26 }}>
         {items.map((it,i)=>(
@@ -3341,6 +3344,10 @@ const PLACE_Q = {
   "Медленный обед":"траттория",
 };
 const MAP_PLACES = [
+  { k:"YCP ✦ кофе и настроение", q:"YCP", icon:"cup" },
+  { k:"Пешка ✦ медленный обед", q:"кафе Пешка", icon:"spark" },
+  { k:"Лолита ✦ бокал и разговоры", q:"винный бар Лолита", icon:"candle" },
+  { k:"DNA ✦ вино и характер", q:"бар DNA", icon:"candle" },
   { k:"Кофейни с террасой", q:"кофейня с террасой", icon:"cup" },
   { k:"Книжные с кофе", q:"книжный магазин кофейня", icon:"book" },
   { k:"Винотеки и бары", q:"винный бар", icon:"candle" },
@@ -3348,15 +3355,9 @@ const MAP_PLACES = [
   { k:"Цветочные", q:"цветочный магазин", icon:"flower" },
   { k:"Камерные чайные", q:"чайная", icon:"cup" },
 ];
-const SG_PICKS_MSK = [
-  { n:"YCP", w:"кофе и настроение", q:"YCP Москва" },
-  { n:"DNA", w:"вино и характер", q:"DNA бар Москва" },
-  { n:"Rebellion", w:"вечер с духом", q:"Rebellion bar Москва" },
-  { n:"Пешка", w:"медленный обед", q:"Пешка кафе Москва" },
-  { n:"Лолита", w:"бокал и разговоры", q:"Лолита винный бар Москва" },
-  { n:"Художественный", w:"кино как искусство", q:"кинотеатр Художественный Москва" },
-];
 const MAP_LEISURE = [
+  { k:"Художественный ✦ кино как искусство", q:"кинотеатр Художественный", icon:"spark" },
+  { k:"Rebellion ✦ вечер с духом", q:"бар Rebellion", icon:"candle" },
   { k:"Галереи и выставки", q:"галерея современного искусства", icon:"spark" },
   { k:"Гончарные студии", q:"гончарная мастерская", icon:"flower" },
   { k:"Йога-студии", q:"йога студия", icon:"leaf" },
@@ -3498,24 +3499,6 @@ function Places_({ profile, partner, chId, userPlaces, openAddPlace, onEditPlace
           })}
         </div>
         <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 12px", lineHeight:1.5 }}>{MAP_TABS[mapTab].note}</p>
-
-        {mapTab!==2 && (
-          <div style={{ margin:"0 0 14px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-              <span style={{ color:partner }}>✦</span>
-              <span style={{ fontFamily:head, fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", color:C.ink }}>Выбор Slow Glow · Москва</span>
-            </div>
-            <div className="sg-scroll-x" style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
-              {SG_PICKS_MSK.map(p=>(
-                <a key={p.n} href={"https://yandex.ru/maps/?text="+encodeURIComponent(p.q)} target="_blank" rel="noopener noreferrer" onClick={()=>sgTrack("pick_open",{n:p.n})} style={{ textDecoration:"none", flexShrink:0, border:`1px solid ${C.line}`, borderRadius:16, padding:"11px 14px", background:"rgba(255,255,255,0.6)", minWidth:128 }}>
-                  <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink, lineHeight:1.1 }}>{p.n}</div>
-                  <div style={{ fontSize:11, color:C.inkSoft, marginTop:3 }}>{p.w}</div>
-                </a>
-              ))}
-            </div>
-            <p style={{ fontSize:11, color:C.inkFaint, margin:"7px 0 0", lineHeight:1.4 }}>Не в Москве? Ниже — подбор такого же уровня в твоём городе.</p>
-          </div>
-        )}
 
         {mapTab!==2 ? (
         <>
@@ -5228,8 +5211,9 @@ function PinReality({ ch, dna, onClose }) {
   const _fbRich = {
     read: `Твоя эстетика — «${ch.aes}»: спокойствие, красота в мелочах и медленный ритм. Ты не гонишься за идеалом — ты обживаешь жизнь, которая уже началась.`,
     actions: [ "Поставь свежие цветы или веточку зелени на видное место.", "Сервируй завтрак красиво: тарелка, льняная салфетка, свет из окна.", "Убери телефон на первый час после пробуждения.", "Вечером зажги свечу вместо верхнего света.", "Пей воду из красивого стакана, не спеша.", "Оставь на виду 3 любимые вещи, лишнее убери.", "Проведи 10 минут в тишине у окна с чаем.", "Приготовь простое блюдо из сезонных продуктов." ],
-    shopping: [ "Льняная скатерть или салфетки нейтрального тона", "Стеклянный графин и стакан для воды", "Ароматическая свеча со спокойным запахом", "Небольшая ваза для сезонных цветов", "Базовая льняная рубашка или платье", "Красивая керамическая кружка", "Плетёная корзина для мелочей", "Книга о медленной жизни (Kinfolk, Flow)" ],
+    shopping: [ "Льняная скатерть или салфетки нейтрального тона", "Стеклянный графин и стакан для воды", "Ароматическая свеча со спокойным запахом", "Небольшая ваза для сезонных цветов", "Льняные наволочки в тон спальне", "Красивая керамическая кружка", "Плетёная корзина для мелочей", "Книга о медленной жизни (Kinfolk, Flow)" ],
     rituals: [ "Медленное утро — кофе у окна без телефона", "Пятничные цветы — букет себе раз в неделю", "Вечер при свече — 20 минут книги или тишины", "Воскресный сброс — уют, порядок и план недели", "Прогулка без наушников — слушать город и себя" ],
+    identity: { who:"Ты — женщина, которая выбирает медленный ритм и красоту в обычном дне. Ты бережно относишься к себе, дому и времени, а твоя жизнь складывается из маленьких осознанных ритуалов — и это уже видно по твоим сохранениям.", habits:[ "10 минут иностранного языка за утренним кофе", "Растяжка 10 минут перед душем", "Страница дневника перед сном — 5 минут", "15 минут бумажной книги днём вместо ленты", "5 минут заботы о растениях и воде в вазах", "Вечерняя прогулка 15 минут без наушников" ], mindset:[ "Красота — это внимание, а не бюджет", "Медленно — значит осознанно", "Мой дом — продолжение меня", "Маленький шаг каждый день сильнее рывка" ] },
   };
   const D = { ..._base, ..._fbRich, ...(ai||{}) };
   const onPick = async (e) => {
@@ -5243,12 +5227,12 @@ function PinReality({ ch, dna, onClose }) {
     try {
       const content = imgs.slice(0,6).map(im=>({ type:"image", source:{ type:"base64", media_type:im.media, data:im.b64 } }));
       for(let _i=0;_i<content.length;_i++){ content[_i]=await sgShrinkBlock(content[_i]); }
-      content.push({ type:"text", text:'Это мои сохранённые картинки (пины) желаемой эстетики жизни. Изучи их внимательно и вместе, как единый образ жизни, и верни ТОЛЬКО валидный JSON без markdown, по-русски: {"read":"2-3 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно и тепло, во втором лице","patterns":[6 конкретных повторяющихся образов, объектов или цветов, которые реально видно на картинках],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий прямо из этих пинов — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например «Сервируй завтрак у окна: льняная салфетка, тарелка из шкафа, 15 минут без телефона»); никаких общих фраз],"shopping":[8 конкретных вещей докупить под эту эстетику — реальные предметы с материалом, цветом или типом, в основном доступные по цене, каждый короткой фразой],"rituals":[5 повторяемых ритуалов, каждый одной строкой в формате «Название — суть»; утренние, вечерние или недельные],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Пиши предметно: конкретные вещи, места и действия, а не абстракции. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности. Верни строго JSON.' });
-      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:2000, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни и внимательный визуальный аналитик. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи для покупки и ритуалы, без воды и абстракций. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
+      content.push({ type:"text", text:'Это мои сохранённые картинки (пины) желаемой эстетики жизни. Изучи их внимательно и вместе, как единый образ жизни, и верни ТОЛЬКО валидный JSON без markdown, по-русски: {"read":"2-3 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно и тепло, во втором лице","patterns":[6 конкретных повторяющихся образов, объектов или цветов, которые реально видно на картинках],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий прямо из этих пинов — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например «Сервируй завтрак у окна: льняная салфетка, тарелка из шкафа, 15 минут без телефона»); никаких общих фраз],"identity":{"who":"3-4 предложения — какая это личность: её характер, ритм, отношение к себе и дому; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, которые делают её этой личностью — разнообразные и нетипичные, каждая с указанием времени, подобранные под её пины: например «10 минут итальянского за утренним кофе», «растяжка 10 минут перед душем», «страница дневника перед сном», «5 минут каллиграфии»],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эту эстетику — текстиль, посуда, свет, свечи и ароматы, вазы, хранение, растения, постеры; каждая с материалом или цветом, в основном доступные; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов, каждый одной строкой в формате «Название — суть»; утренние, вечерние или недельные],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Пиши предметно: конкретные вещи, места и действия, а не абстракции. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности. Никогда не советуй покупать одежду, обувь или косметику — если речь о стиле, предлагай собрать образ из её собственного гардероба («собери из своего: …»). Верни строго JSON.' });
+      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:2600, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни и внимательный визуальный аналитик. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи и ритуалы, без воды и абстракций. Покупки советуешь только для дома и интерьера; одежду покупать не советуешь никогда — только собирать образы из её гардероба. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
       const data = await r.json();
       let txt = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
       const obj = sgParseJSON(txt);
-      if (obj && obj.patterns) { const _a=(x)=>Array.isArray(x)?x:[]; const clean={ ...obj, patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month) }; setAi(clean); sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) }); try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){} sgTrack("analyzer_done", { imgs: imgs.length }); }
+      if (obj && obj.patterns) { const _a=(x)=>Array.isArray(x)?x:[]; const clean={ ...obj, patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month) }; if(obj.identity && typeof obj.identity==="object"){ clean.identity={ who:String(obj.identity.who||""), habits:_a(obj.identity.habits), mindset:_a(obj.identity.mindset) }; } else { delete clean.identity; } setAi(clean); sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) }); try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){} sgTrack("analyzer_done", { imgs: imgs.length }); }
     } catch(e) {}
     setBusy(false);
   };
@@ -5315,9 +5299,26 @@ function PinReality({ ch, dna, onClose }) {
         ))}</div>
       </>)}
 
+      {D.identity && (D.identity.who || (D.identity.habits && D.identity.habits.length>0)) && (<>
+        <Label>Как стать этой женщиной</Label>
+        {D.identity.who && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.5, color:C.ink, margin:"6px 0 12px" }}>{D.identity.who}</p>}
+        {D.identity.habits && D.identity.habits.length>0 && (<div style={{ marginBottom:12 }}>
+          <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 9px" }}>Ежедневные привычки по 10–15 минут — из них и вырастает эта личность:</p>
+          {D.identity.habits.map((h,i)=>(
+            <div key={i} className={"fade st"+((i%6)+1)} style={{ display:"flex", gap:11, alignItems:"flex-start", marginBottom:9, background:"rgba(255,255,255,0.5)", border:`1px solid ${C.line}`, borderRadius:12, padding:"10px 12px" }}>
+              <GlowOrb partner={ch.partner} size={20} spark={false} style={{ flexShrink:0, marginTop:1 }}/>
+              <p style={{ fontSize:14, lineHeight:1.42, color:C.ink, margin:0 }}>{h}</p>
+            </div>
+          ))}
+        </div>)}
+        {D.identity.mindset && D.identity.mindset.length>0 && (
+          <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:24 }}>{D.identity.mindset.map(m=><span key={m}>{chip(m, `${ch.partner}26`)}</span>)}</div>
+        )}
+      </>)}
+
       {D.shopping && D.shopping.length>0 && (<>
-        <Label>Список покупок под эту эстетику</Label>
-        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Нажми на пункт — откроется, где это купить. Собери жизнь мечты по деталям.</p>
+        <Label>Список покупок для дома</Label>
+        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Детали интерьера под твои пины. Отметь купленное — или нажми «Купить».</p>
         <div style={{ marginBottom:10, borderRadius:16, overflow:"hidden", border:`1px solid ${C.line}` }}>{D.shopping.map((s,i)=>{ const got=!!bought[buyKey(s)]; return (
           <div key={i} style={{ display:"flex", gap:11, alignItems:"center", padding:"12px 14px", background:got?`${ch.partner}14`:(i%2?"rgba(255,255,255,0.5)":"rgba(226,201,164,0.16)"), borderTop:i?`1px solid ${C.line}`:"none" }}>
             <button onClick={()=>toggleBought(s)} aria-label={got?"Убрать отметку":"Отметить купленным"} style={{ width:22, height:22, borderRadius:7, flexShrink:0, cursor:"pointer", border:got?"none":`1.5px solid ${ch.partner}`, background:got?ch.partner:"transparent", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>{got && <Check size={13} strokeWidth={2.8} color="#fff"/>}</button>

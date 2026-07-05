@@ -18,9 +18,12 @@ import crypto from "node:crypto";
 
 export const config = { maxDuration: 60 };
 
-const AUTH_KEY = process.env.GIGACHAT_AUTH_KEY || "MDE5ZWZlOTMtMzViZC03NzYyLTgxNGEtOWNjMDM0OGJjZWI3OjY0MTExZGFjLWNiMTUtNGYxMC1hY2UyLTVmMjRlNjQ4MWE3MA==";
+// ВАЖНО: ключ задаётся ТОЛЬКО через переменную окружения GIGACHAT_AUTH_KEY
+// (Vercel → Settings → Environment Variables). В коде ключа больше нет — так он
+// не утечёт с исходниками. Без переменной ИИ отвечает пустым (запасные ответы).
+const AUTH_KEY = process.env.GIGACHAT_AUTH_KEY || "";
 const SCOPE = process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS";
-const MODEL_TEXT = process.env.GIGACHAT_MODEL || "GigaChat";
+const MODEL_TEXT = process.env.GIGACHAT_MODEL || "GigaChat-Pro"; // Pro умнее базовой; вернуть дешёвую: GIGACHAT_MODEL=GigaChat
 const MODEL_VISION = process.env.GIGACHAT_VISION_MODEL || "GigaChat-Max";
 const OAUTH = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const API = "https://gigachat.devices.sberbank.ru/api/v1";
@@ -124,8 +127,25 @@ async function gigachat(body) {
   }
 }
 
+/* ── Защита эндпоинта: до 20 ИИ-запросов в минуту с одного IP + проверка Origin ── */
+const _hits = new Map();
+function allowed(req) {
+  const org = req.headers.origin || "";
+  const host = req.headers.host || "";
+  const extra = process.env.SG_ALLOWED_ORIGIN || "";
+  if (org && !(org.includes(host) || (extra && org.includes(extra)))) return false;
+  const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim();
+  const now = Date.now();
+  const arr = (_hits.get(ip) || []).filter(t => now - t < 60000);
+  if (arr.length >= 20) { _hits.set(ip, arr); return false; }
+  arr.push(now); _hits.set(ip, arr);
+  if (_hits.size > 5000) _hits.clear();
+  return true;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+  if (!allowed(req)) { res.status(200).json({ content: [] }); return; }
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
     res.status(200).json(await gigachat(body));

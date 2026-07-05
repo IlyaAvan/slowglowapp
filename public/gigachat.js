@@ -23,7 +23,7 @@ export const config = { maxDuration: 60 };
 // не утечёт с исходниками. Без переменной ИИ отвечает пустым (запасные ответы).
 const AUTH_KEY = process.env.GIGACHAT_AUTH_KEY || "";
 const SCOPE = process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS";
-const MODEL_TEXT = process.env.GIGACHAT_MODEL || "GigaChat";
+const MODEL_TEXT = process.env.GIGACHAT_MODEL || "GigaChat-Pro"; // Pro умнее базовой; вернуть дешёвую: GIGACHAT_MODEL=GigaChat
 const MODEL_VISION = process.env.GIGACHAT_VISION_MODEL || "GigaChat-Max";
 const OAUTH = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const API = "https://gigachat.devices.sberbank.ru/api/v1";
