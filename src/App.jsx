@@ -2364,15 +2364,28 @@ function sgSetupPWA(){
 class SGErrorBoundary extends React.Component {
   constructor(props){ super(props); this.state = { hasError:false }; }
   static getDerivedStateFromError(){ return { hasError:true }; }
-  componentDidCatch(err){ try{ console.error("SlowGlow error:", err); }catch(e){} }
-  hardReset(){
-    // Безопасный сброс: чистим только кэш и service worker (обычная причина белого экрана),
-    // но НЕ трогаем localStorage — фото, доска, моменты и профиль остаются на месте.
+  componentDidCatch(err){
+    try{ console.error("SlowGlow error:", err); }catch(e){}
+    // Одноразовое авто-восстановление: чаще всего экран падает из-за устаревшего кэша после
+    // обновления. Пробуем сбросить кэш+SW и перезагрузиться автоматически — но только один раз
+    // за сессию, чтобы не зациклиться, если ошибка настоящая.
+    try{
+      if(!sessionStorage.getItem("sg_autoheal")){
+        sessionStorage.setItem("sg_autoheal","1");
+        this.hardReset();
+      }
+    }catch(e){}
+  }
+  async hardReset(){
+    // Безопасный сброс: дожидаемся реального удаления кэша и service worker (обычная причина
+    // залипшего белого экрана), но НЕ трогаем localStorage — профиль и прогресс остаются.
     try {
-      if (window.caches && caches.keys) caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));
-      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));
+      if (window.caches && caches.keys) { const ks = await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }
     } catch(e){}
-    setTimeout(()=>{ try{ location.reload(); }catch(e){} }, 200);
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r=>r.unregister())); }
+    } catch(e){}
+    try{ location.reload(); }catch(e){ try{ window.location.href = window.location.pathname + "?fresh=" + Date.now(); }catch(_){} }
   }
   render(){
     if (!this.state.hasError) return this.props.children;
