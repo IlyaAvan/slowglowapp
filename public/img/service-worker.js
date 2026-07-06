@@ -1,5 +1,5 @@
 // Slow Glow — service worker (network-first, чтобы новые версии не залипали)
-const CACHE = "slowglow-v4";
+const CACHE = "slowglow-v7";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", (e) => {
   self.skipWaiting();
@@ -29,4 +29,23 @@ self.addEventListener("fetch", (e) => {
         caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("./index.html") : undefined))
       )
   );
+});
+
+// ── Пуши: «Тебе письмо ✦» ────────────────────────────────────────────────────
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data && e.data.text() }; }
+  const title = d.title || "Slow Glow ✦";
+  const body = d.body || "Тебе письмо на сегодня — шаг, идея и вопрос ✦";
+  e.waitUntil(self.registration.showNotification(title, {
+    body, icon: "./icon-192-v2.png", badge: "./icon-192-v2.png", data: { url: (d.url || "./") }
+  }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "./";
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((ws) => {
+    for (const w of ws) { if ("focus" in w) return w.focus(); }
+    return clients.openWindow(url);
+  }));
 });
