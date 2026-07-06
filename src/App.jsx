@@ -1767,6 +1767,24 @@ if (typeof window !== "undefined" && !window.__sgInit) {
   window.addEventListener("appinstalled", ()=> sgTrack("pwa_install"));
 }
 
+/* ── Раскрывашка: тяжёлые секции прячутся под иконку-заголовок ── */
+function Fold({ ch, icon, title, sub, defaultOpen=false, children }){
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div style={{ borderRadius:16, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.5)", marginBottom:12, overflow:"hidden" }}>
+      <button onClick={()=>setOpen(o=>!o)} className="tapPop" style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"13px 14px", border:"none", background:"transparent", cursor:"pointer", textAlign:"left" }}>
+        <span style={{ width:32, height:32, borderRadius:99, flexShrink:0, background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${ch.partner})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>{icon}</span>
+        <span style={{ flex:1, minWidth:0 }}>
+          <span style={{ display:"block", fontFamily:serif, fontStyle:"italic", fontSize:16.5, color:C.ink, lineHeight:1.12 }}>{title}</span>
+          {sub && <span style={{ display:"block", fontSize:11.5, color:C.inkFaint, marginTop:2, lineHeight:1.3 }}>{sub}</span>}
+        </span>
+        <ChevronDown size={17} strokeWidth={1.8} color={C.inkSoft} style={{ flexShrink:0, transform:open?"rotate(180deg)":"none", transition:"transform .2s" }}/>
+      </button>
+      {open && <div className="fade" style={{ padding:"2px 14px 14px" }}>{children}</div>}
+    </div>
+  );
+}
+
 /* ── Рисованный орнамент: тонкая веточка со звёздочкой, в цвет главы ────────── */
 function SGFleur({ color="#C0895E", size=54, style }){
   return (
@@ -1778,6 +1796,21 @@ function SGFleur({ color="#C0895E", size=54, style }){
       <path d="M72 10 l2.2 5.4 5.4 2.2 -5.4 2.2 -2.2 5.4 -2.2 -5.4 -5.4 -2.2 5.4 -2.2 Z" fill={color} opacity="0.9"/>
       <circle cx="88" cy="24" r="2" fill={color} opacity="0.5"/>
       <circle cx="63" cy="5" r="1.5" fill={color} opacity="0.4"/>
+    </svg>
+  );
+}
+
+/* ── Рисованное солнце: полукруг с лучами, в цвет главы ─────────────────────── */
+function SGSun({ color="#C0895E", size=34, style }){
+  return (
+    <svg width={size} height={size*0.62} viewBox="0 0 100 62" fill="none" aria-hidden="true" style={style}>
+      <path d="M22 54 A 28 28 0 0 1 78 54" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.85"/>
+      <line x1="50" y1="6" x2="50" y2="16" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+      <line x1="22" y1="16" x2="29" y2="23" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+      <line x1="78" y1="16" x2="71" y2="23" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+      <line x1="8" y1="38" x2="18" y2="41" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+      <line x1="92" y1="38" x2="82" y2="41" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+      <line x1="10" y1="54" x2="90" y2="54" stroke={color} strokeWidth="1.6" strokeLinecap="round" opacity="0.5"/>
     </svg>
   );
 }
@@ -1890,7 +1923,7 @@ function DailyEnvelope({ ch, bump }){
     <div className="fade" style={{ borderRadius:20, border:`1px solid ${C.line}`, overflow:"hidden", marginBottom:18, background:"rgba(255,255,255,0.6)" }}>
       <div style={{ padding:"13px 16px 11px", background:`linear-gradient(110deg, ${C.oat}, ${ch.partner}30)`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <Label color={C.ink}>Письмо на сегодня · {dstr}</Label>
-        <span style={{ fontFamily:serif, fontStyle:"italic", fontSize:13, color:ch.partner }}>открыто ✦</span>
+        <span style={{ display:"flex", alignItems:"center", gap:7 }}><SGSun color={ch.partner} size={28}/><span style={{ fontFamily:serif, fontStyle:"italic", fontSize:13, color:ch.partner }}>открыто ✦</span></span>
       </div>
       <div style={{ padding:"12px 16px 15px" }}>
         <div style={{ display:"flex", gap:11, alignItems:"flex-start", marginBottom:11 }}>
@@ -3087,6 +3120,7 @@ function BeautifulDay({ ch }) {
   const dstr = new Date().toLocaleDateString("ru-RU",{ day:"numeric", month:"long" });
   return (
     <div style={{ position:"relative", margin:"0 0 22px", borderRadius:22, overflow:"hidden", border:`1px solid ${ch.partner}`, background:`linear-gradient(165deg, ${ch.partner}26, rgba(255,255,255,0.65) 62%)` }}>
+      <div aria-hidden="true" style={{ position:"absolute", right:-12, top:-12, width:132, height:132, opacity:0.42, maskImage:"linear-gradient(120deg, transparent 32%, #000)", WebkitMaskImage:"linear-gradient(120deg, transparent 32%, #000)" }}><Photo t={4} url={IMG.bouquetTable} h={150} radius={0}/></div>
       {burst && <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:3 }}>{Array.from({length:12}).map((_,k)=>{ const cols=[ch.partner, C.sage, C.butter, "#F2B6C6"]; return <span key={k} className="petal" style={{ left:((6+k*8)%92)+"%", background:cols[k%4], animationDelay:(k*0.15)+"s", animationDuration:(2.3+(k%5)*0.32)+"s" }}/>; })}</div>}
       <div style={{ padding:"17px 18px 4px" }}>
         <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:8 }}>
@@ -5303,6 +5337,7 @@ function PinReality({ ch, dna, onClose }) {
     shopping: [ "Льняная скатерть или салфетки нейтрального тона", "Стеклянный графин и стакан для воды", "Ароматическая свеча со спокойным запахом", "Небольшая ваза для сезонных цветов", "Льняные наволочки в тон спальне", "Красивая керамическая кружка", "Плетёная корзина для мелочей", "Книга о медленной жизни (Kinfolk, Flow)" ],
     rituals: [ "Медленное утро — кофе у окна без телефона", "Пятничные цветы — букет себе раз в неделю", "Вечер при свече — 20 минут книги или тишины", "Воскресный сброс — уют, порядок и план недели", "Прогулка без наушников — слушать город и себя" ],
     palette: ["#F5EEDC","#E8D5B5","#D9B98C","#B98A5E","#7A5A3E"],
+    outfits: [ "Льняное платье молочного оттенка, плетёная сумка и кожаные сандалии — образ медленного лета.", "Прямые светлые джинсы, белая рубашка свободного кроя и балетки — тихая классика на каждый день.", "Трикотажный костюм овсяного цвета и длинное пальто без подкладки — мягкая многослойность на прохладный вечер." ],
     twin: { name:"Тосканский полдень", essence:"Ты — тёплый, неспешный свет, льняная простота и красота в обычном дне. Твоя эстетика дышит спокойствием и заботой о себе.", traits:["тёплая","неспешная","уютная"] },
     identity: { who:"Ты — женщина, которая выбирает медленный ритм и красоту в обычном дне. Ты бережно относишься к себе, дому и времени, а твоя жизнь складывается из маленьких осознанных ритуалов — и это уже видно по твоим сохранениям.", habits:[ "10 минут иностранного языка за утренним кофе", "Растяжка 10 минут перед душем", "Страница дневника перед сном — 5 минут", "15 минут бумажной книги днём вместо ленты", "5 минут заботы о растениях и воде в вазах", "Вечерняя прогулка 15 минут без наушников" ], mindset:[ "Красота — это внимание, а не бюджет", "Медленно — значит осознанно", "Мой дом — продолжение меня", "Маленький шаг каждый день сильнее рывка" ] },
   };
@@ -5318,12 +5353,12 @@ function PinReality({ ch, dna, onClose }) {
     try {
       const content = imgs.slice(0,6).map(im=>({ type:"image", source:{ type:"base64", media_type:im.media, data:im.b64 } }));
       for(let _i=0;_i<content.length;_i++){ content[_i]=await sgShrinkBlock(content[_i]); }
-      content.push({ type:"text", text:'Это мои сохранённые картинки (пины) желаемой эстетики жизни. Изучи их внимательно и вместе, как единый образ жизни, и верни ТОЛЬКО валидный JSON без markdown, по-русски: {"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни хотя бы две детали прямо с картинок","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника — место, время суток и эпоха или образ, максимум 3-4 слова, чтобы хотелось выложить: например «Парижское утро 70-х», «Тосканский полдень», «Скандинавская зима у окна», «Прованская хозяйка», «Киногероиня французской новой волны»","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[6 конкретных повторяющихся образов, объектов или цветов, которые реально видно на картинках],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий прямо из этих пинов — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например «Сервируй завтрак у окна: льняная салфетка, тарелка из шкафа, 15 минут без телефона»); никаких общих фраз],"identity":{"who":"3-4 предложения — какая это личность: её характер, ритм, отношение к себе и дому; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, которые делают её этой личностью — разнообразные и нетипичные, каждая с указанием времени, подобранные под её пины: например «10 минут итальянского за утренним кофе», «растяжка 10 минут перед душем», «страница дневника перед сном», «5 минут каллиграфии»],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эту эстетику — текстиль, посуда, свет, свечи и ароматы, вазы, хранение, растения, постеры; каждая с материалом или цветом, в основном доступные; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов, каждый одной строкой в формате «Название — суть»; утренние, вечерние или недельные],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Пиши предметно: конкретные вещи, места и действия, а не абстракции. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности. Никогда не советуй покупать одежду, обувь или косметику — если речь о стиле, предлагай собрать образ из её собственного гардероба («собери из своего: …»). Верни строго JSON.' });
-      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:2600, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни и внимательный визуальный аналитик. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи и ритуалы, без воды и абстракций. Покупки советуешь только для дома и интерьера; одежду покупать не советуешь никогда — только собирать образы из её гардероба. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
+      content.push({ type:"text", text:'Это мои сохранённые картинки (пины) желаемой эстетики жизни. Изучи их внимательно и вместе, как единый образ жизни, и верни ТОЛЬКО валидный JSON без markdown, по-русски: {"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни хотя бы две детали прямо с картинок","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника — место, время суток и эпоха или образ, максимум 3-4 слова, чтобы хотелось выложить: например «Парижское утро 70-х», «Тосканский полдень», «Скандинавская зима у окна», «Прованская хозяйка», «Киногероиня французской новой волны»","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[6 конкретных повторяющихся образов, объектов или цветов, которые реально видно на картинках],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий прямо из этих пинов — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например «Сервируй завтрак у окна: льняная салфетка, тарелка из шкафа, 15 минут без телефона»); никаких общих фраз],"identity":{"who":"3-4 предложения — какая это личность: её характер, ритм, отношение к себе и дому; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, которые делают её этой личностью — разнообразные и нетипичные, каждая с указанием времени, подобранные под её пины: например «10 минут итальянского за утренним кофе», «растяжка 10 минут перед душем», «страница дневника перед сном», «5 минут каллиграфии»],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"outfits":[3 готовых образа под её эстетику, собранных из базовых вещей её вероятного гардероба — каждый одним предложением: типы вещей, цвета, материалы; можно опираться на актуальные тренды, но БЕЗ единого названия бренда или марки],"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эту эстетику — текстиль, посуда, свет, свечи и ароматы, вазы, хранение, растения, постеры; каждая с материалом или цветом, в основном доступные; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов, каждый одной строкой в формате «Название — суть»; утренние, вечерние или недельные],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Пиши предметно: конкретные вещи, места и действия, а не абстракции. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности. Никогда не советуй покупать одежду, обувь или косметику — если речь о стиле, предлагай собрать образ из её собственного гардероба («собери из своего: …»). Никогда не называй бренды и марки. Верни строго JSON.' });
+      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:2600, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни и внимательный визуальный аналитик. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи и ритуалы, без воды и абстракций. Покупки советуешь только для дома и интерьера; одежду покупать не советуешь никогда — только собирать образы из её гардероба. Никогда не называешь бренды, марки и магазины — вещи описываешь по типу, цвету и материалу; на актуальные тренды ссылаться можно, но без имён брендов. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
       const data = await r.json();
       let txt = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
       const obj = sgParseJSON(txt);
-      if (obj && obj.patterns) { const _a=(x)=>Array.isArray(x)?x:[]; const clean={ ...obj, patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month), palette:_a(obj.palette).filter(x=>/^#[0-9a-fA-F]{3,8}$/.test(String(x))).slice(0,6) }; if(obj.identity && typeof obj.identity==="object"){ clean.identity={ who:String(obj.identity.who||""), habits:_a(obj.identity.habits), mindset:_a(obj.identity.mindset) }; } else { delete clean.identity; } if(obj.twin && typeof obj.twin==="object" && obj.twin.name){ clean.twin={ name:String(obj.twin.name).slice(0,42), essence:String(obj.twin.essence||""), traits:_a(obj.twin.traits).slice(0,3) }; } else { delete clean.twin; } setAi(clean); sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) }); try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){} sgTrack("analyzer_done", { imgs: imgs.length }); }
+      if (obj && obj.patterns) { const _a=(x)=>Array.isArray(x)?x:[]; const clean={ ...obj, patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month), outfits:_a(obj.outfits), palette:_a(obj.palette).filter(x=>/^#[0-9a-fA-F]{3,8}$/.test(String(x))).slice(0,6) }; if(obj.identity && typeof obj.identity==="object"){ clean.identity={ who:String(obj.identity.who||""), habits:_a(obj.identity.habits), mindset:_a(obj.identity.mindset) }; } else { delete clean.identity; } if(obj.twin && typeof obj.twin==="object" && obj.twin.name){ clean.twin={ name:String(obj.twin.name).slice(0,42), essence:String(obj.twin.essence||""), traits:_a(obj.twin.traits).slice(0,3) }; } else { delete clean.twin; } setAi(clean); sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) }); try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){} sgTrack("analyzer_done", { imgs: imgs.length }); }
     } catch(e) {}
     setBusy(false);
   };
@@ -5409,8 +5444,8 @@ function PinReality({ ch, dna, onClose }) {
         ))}</div>
       </>)}
 
-      {D.identity && (D.identity.who || (D.identity.habits && D.identity.habits.length>0)) && (<>
-        <Label>Как стать этой женщиной</Label>
+      {D.identity && (D.identity.who || (D.identity.habits && D.identity.habits.length>0)) && (
+      <Fold ch={ch} icon="✨" title="Как стать этой женщиной" sub="портрет, привычки по 10–15 минут и установки">
         {D.identity.who && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.5, color:C.ink, margin:"6px 0 12px" }}>{D.identity.who}</p>}
         {D.identity.habits && D.identity.habits.length>0 && (<div style={{ marginBottom:12 }}>
           <p style={{ fontSize:12.5, color:C.inkFaint, margin:"0 0 9px" }}>Ежедневные привычки по 10–15 минут — из них и вырастает эта личность:</p>
@@ -5422,13 +5457,23 @@ function PinReality({ ch, dna, onClose }) {
           ))}
         </div>)}
         {D.identity.mindset && D.identity.mindset.length>0 && (
-          <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:24 }}>{D.identity.mindset.map(m=><span key={m}>{chip(m, `${ch.partner}26`)}</span>)}</div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>{D.identity.mindset.map(m=><span key={m}>{chip(m, `${ch.partner}26`)}</span>)}</div>
         )}
-      </>)}
+      </Fold>)}
 
-      {D.shopping && D.shopping.length>0 && (<>
-        <Label>Список покупок для дома</Label>
-        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Детали интерьера под твои пины. Отметь купленное — или нажми «Купить».</p>
+      {D.outfits && D.outfits.length>0 && (
+      <Fold ch={ch} icon="👗" title="Образы под твою эстетику" sub="из твоего гардероба · по трендам, без брендов">
+        {D.outfits.map((o,i)=>(
+          <div key={i} style={{ display:"flex", gap:11, alignItems:"flex-start", marginBottom:9, background:"rgba(255,255,255,0.55)", border:`1px solid ${C.line}`, borderRadius:12, padding:"10px 12px" }}>
+            <span style={{ flexShrink:0, marginTop:1, fontFamily:serif, fontStyle:"italic", fontSize:13, color:ch.partner }}>0{i+1}</span>
+            <p style={{ fontSize:14, lineHeight:1.45, color:C.ink, margin:0 }}>{o}</p>
+          </div>
+        ))}
+        <p style={{ fontSize:11, color:C.inkFaint, margin:"4px 0 0", textAlign:"center" }}>Собирай из того, что уже есть — стиль не про покупки ✦</p>
+      </Fold>)}
+
+      {D.shopping && D.shopping.length>0 && (
+      <Fold ch={ch} icon="🛒" title="Список покупок для дома" sub="детали интерьера под твои пины · отметь купленное">
         <div style={{ marginBottom:10, borderRadius:16, overflow:"hidden", border:`1px solid ${C.line}` }}>{D.shopping.map((s,i)=>{ const got=!!bought[buyKey(s)]; return (
           <div key={i} style={{ display:"flex", gap:11, alignItems:"center", padding:"12px 14px", background:got?`${ch.partner}14`:(i%2?"rgba(255,255,255,0.5)":"rgba(226,201,164,0.16)"), borderTop:i?`1px solid ${C.line}`:"none" }}>
             <button onClick={()=>toggleBought(s)} aria-label={got?"Убрать отметку":"Отметить купленным"} style={{ width:22, height:22, borderRadius:7, flexShrink:0, cursor:"pointer", border:got?"none":`1.5px solid ${ch.partner}`, background:got?ch.partner:"transparent", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>{got && <Check size={13} strokeWidth={2.8} color="#fff"/>}</button>
@@ -5442,27 +5487,26 @@ function PinReality({ ch, dna, onClose }) {
             <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, color:ch.partner, textAlign:"center", margin:"7px 0 0" }}>Собрано {got} из {D.shopping.length} — жизнь мечты складывается по деталям ✦</p>
           </div>
         ) : null; })()}
-        <p style={{ fontSize:11, color:C.inkFaint, margin:"0 0 22px", textAlign:"center" }}>Партнёрские ссылки — покупая по ним, ты поддерживаешь Slow Glow ✦</p>
-      </>)}
+        <p style={{ fontSize:11, color:C.inkFaint, margin:"0 0 4px", textAlign:"center" }}>Партнёрские ссылки — покупая по ним, ты поддерживаешь Slow Glow ✦</p>
+      </Fold>)}
 
-      {D.rituals && D.rituals.length>0 && (<>
-        <Label>Ритуалы, которые это закрепят</Label>
-        <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Повторяемые маленькие ритуалы — из них и складывается жизнь мечты.</p>
+      {D.rituals && D.rituals.length>0 && (
+      <Fold ch={ch} icon="🕯" title="Ритуалы, которые это закрепят" sub="повторяемые мелочи — из них складывается жизнь">
         <div style={{ marginBottom:24 }}>{D.rituals.map((rt,i)=>(
           <div key={i} style={{ display:"flex", gap:11, alignItems:"flex-start", background:`${ch.partner}18`, borderRadius:12, padding:"11px 13px", marginBottom:9 }}>
             <GlowOrb partner={ch.partner} size={22} spark={false} style={{ flexShrink:0, marginTop:1 }}/>
             <p style={{ fontSize:14, lineHeight:1.42, color:C.ink, margin:0 }}>{rt}</p>
           </div>
         ))}</div>
-      </>)}
+      </Fold>)}
 
       <ShareDream ch={ch} D={D}/>
 
       <ShareReality ch={ch} D={D}/>
       <ShareBoard ch={ch} imgs={imgs} D={D}/>
 
-      <Label>Что у тебя уже есть</Label>
-      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Ты ближе к этой жизни, чем кажется. Это уже с тобой.</p>
+      <Fold ch={ch} icon="🌿" title="Что уже есть и куда расти" sub="ты ближе, чем кажется · мягкие точки роста">
+      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Это уже с тобой:</p>
       <div style={{ marginBottom:20 }}>{D.have.map(h=>(
         <div key={h} style={{ display:"flex", gap:10, alignItems:"center", marginBottom:7 }}>
           <span style={{ width:20, height:20, borderRadius:99, flexShrink:0, background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${C.green})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, color:C.ink }}>✓</span>
@@ -5470,14 +5514,14 @@ function PinReality({ ch, dna, onClose }) {
         </div>
       ))}</div>
 
-      <Label>Куда можно мягко расти</Label>
-      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Без давления — только то, что можно впустить, когда сама захочешь.</p>
-      <div style={{ marginBottom:22 }}>{D.missing.map(m=>(
+      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Куда можно мягко расти — когда сама захочешь:</p>
+      <div style={{ marginBottom:8 }}>{D.missing.map(m=>(
         <div key={m} style={{ display:"flex", gap:10, alignItems:"center", marginBottom:7 }}>
           <span style={{ width:6, height:6, borderRadius:99, flexShrink:0, background:ch.partner }}/>
           <span style={{ fontSize:14, color:C.inkSoft }}>{m}</span>
         </div>
       ))}</div>
+      </Fold>
 
       <div style={{ borderRadius:20, overflow:"hidden", border:`1px solid ${C.line}`, marginBottom:26 }}>
         <div style={{ padding:"16px 18px", background:`radial-gradient(circle at 20% 0%, ${ch.partner}33, transparent 70%)` }}>
@@ -5495,8 +5539,7 @@ function PinReality({ ch, dna, onClose }) {
         </div>
       </div>
 
-      <Label>Как повторить твои образы</Label>
-      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 14px" }}>Каждый сохранённый образ — инструкция, что в нём цепляет и как прожить.</p>
+      <Fold ch={ch} icon="🖼" title="Как повторить твои образы" sub="разбор образов: что цепляет и как прожить">
       {pins.map((p,i)=>(
         <div key={i} className="fade" style={{ marginBottom:18, borderRadius:18, overflow:"hidden", background:"rgba(255,255,255,0.6)", border:`1px solid ${C.line}` }}>
           <Photo t={p.t} url={p.url} h={150} radius={0}>
@@ -5529,6 +5572,7 @@ function PinReality({ ch, dna, onClose }) {
         </div>
       ))}
       <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15, color:C.inkFaint, textAlign:"center", margin:"6px 0 0" }}>Образы обновляются каждый день ✦</p>
+      </Fold>
     </OverlayShell>
   );
 }
@@ -5887,7 +5931,7 @@ function StylistView({ ch, profile, wardrobe, setWardrobe, onClose }) {
       const imgs = wardrobe.slice(0,10).map(w=>{ const m=(w.photo.match(/^data:(.*?);base64,/)||[])[1]||"image/jpeg"; return { type:"image", source:{ type:"base64", media_type:m, data:w.photo.split(",")[1] } }; });
       for(let _i=0;_i<imgs.length;_i++){ imgs[_i]=await sgShrinkBlock(imgs[_i]); }
       const sys = `Ты — личный стилист Slow Glow в эстетике ${ch.aes}. Тебе показывают фото вещей из гардероба женщины. Собери из ИМЕННО этих вещей 2–3 готовых образа (лука) под её эстетику. Для каждого: название образа, что с чем надеть из показанного, повод, и один совет по аксессуарам или обуви, чтобы дополнить. Если чего-то не хватает — мягко предложи одну вещь докупить. Тёплый живой русский, без markdown и звёздочек.`;
-      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1100, system:sys, messages:[{ role:"user", content:[...imgs, { type:"text", text:"Собери образы из этих вещей под мою эстетику." }] }] }) });
+      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1100, system:sys, messages:[{ role:"user", content:[...imgs, { type:"text", text:"Собери образы из этих вещей под мою эстетику. Не называй бренды и марки — описывай вещи по типу, цвету и материалу; на тренды ссылаться можно, без имён брендов." }] }] }) });
       const data = await r.json();
       const txt = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
       setAiLooks(stripMd(txt) || "Не получилось собрать образ — попробуй ещё раз или добавь больше вещей.");
@@ -7202,7 +7246,8 @@ function Paywall({ ch, feature, onClose, onSubscribe }) {
 
 // ── AI SLOW GLOW ──────────────────────────────────────────────────
 function AskSlowGlow({ ch, profile, premium, openPlus, onClose }) {
-  const [msgs, setMsgs] = useState([]);
+  const [msgs, setMsgs] = useState(()=> sgStore.get("sg_chat", []));
+  useEffect(()=>{ try{ sgStore.set("sg_chat", msgs.slice(-40)); }catch(e){} }, [msgs]);
   const [val, setVal] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef(null);
