@@ -199,6 +199,40 @@ function aiAllowed(req) {
 
 // ── HTTP-сервер ──────────────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
+  if (req.method === "GET" && req.url === "/api/sync/ping") {
+    res.writeHead(200, { "Content-Type": "application/json" }); res.end('{"ok":true}'); return;
+  }
+  if (req.method === "GET" && req.url.startsWith("/api/sync/load?")) {
+    const code = String(new URL(req.url, "http://x").searchParams.get("code") || "").toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(code)) { res.writeHead(400, { "Content-Type": "application/json" }); res.end('{"error":"bad code"}'); return; }
+    readFile(path.join(DATA_DIR, "sync", code + ".json"), "utf8")
+      .then(txt => { res.writeHead(200, { "Content-Type": "application/json" }); res.end(txt); })
+      .catch(() => { res.writeHead(404, { "Content-Type": "application/json" }); res.end('{"error":"not found"}'); });
+    return;
+  }
+  if (req.method === "POST" && req.url === "/api/sync/save") {
+    if (!aiAllowed(req)) { res.writeHead(429, { "Content-Type": "application/json" }); res.end('{"error":"slow down"}'); return; }
+    let raw = "";
+    req.on("data", c => { raw += c; if (raw.length > 500000) req.destroy(); }); // до ~500КБ
+    req.on("end", async () => {
+      try {
+        const b = JSON.parse(raw || "{}");
+        if (!b || typeof b.data !== "object" || !b.data) throw new Error("bad");
+        let code = String(b.code || "").toUpperCase();
+        if (!/^[A-Z0-9]{6}$/.test(code)) {
+          const AL = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // без похожих символов
+          code = Array.from({ length: 6 }, () => AL[Math.floor(Math.random() * AL.length)]).join("");
+        }
+        await mkdir(path.join(DATA_DIR, "sync"), { recursive: true });
+        await writeFile(path.join(DATA_DIR, "sync", code + ".json"), JSON.stringify({ t: Date.now(), data: b.data }));
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ code }));
+      } catch (e) {
+        res.writeHead(400, { "Content-Type": "application/json" }); res.end('{"error":"bad request"}');
+      }
+    });
+    return;
+  }
   if (req.method === "GET" && req.url === "/api/push/pubkey") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ key: VAPID ? VAPID.publicKey : "" }));
