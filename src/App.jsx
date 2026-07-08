@@ -566,6 +566,92 @@ if (typeof window !== "undefined" && !window.__sgInit) {
   window.addEventListener("appinstalled", ()=> sgTrack("pwa_install"));
 }
 
+/* ── «Поток»: залипательная бесконечная лента вдохновения в духе Pinterest.
+   Два столбца-мозаика из фото приложения с тёплыми подписями; листается
+   бесконечно (карточки генерируются детерминированно от индекса), сердечко
+   сохраняет в «Сохранённое». Повод зависнуть — и мягкий путь к анализатору. ── */
+function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
+  const POOL = React.useMemo(()=> Object.values(IMG).filter(u=>typeof u==="string"), []);
+  const CAPS = React.useMemo(()=> [
+    ...DAY_BEAUTY.map(d=>d.v), ...ENVELOPE_IDEAS, ...RITUAL_STEPS,
+  ], []);
+  const [count, setCount] = useState(24);
+  const [burst, setBurst] = useState(null); // id карточки с всплеском сердца
+  const lastTap = React.useRef({});
+  const doy = sgDoy();
+  useEffect(()=>{ sgTrack("feed_open"); },[]);
+  const doSave = (item)=>{ toggleSave(item); sgTrack("feed_save"); };
+  const tap = (id, item)=>{ // двойное касание = сохранить, с всплеском сердца
+    const now = Date.now();
+    if (now - (lastTap.current[id]||0) < 340) {
+      if (!saved.some(x=>x.id===id)) doSave(item);
+      setBurst(id); setTimeout(()=>setBurst(b=> b===id ? null : b), 780);
+    }
+    lastTap.current[id] = now;
+  };
+  const card = (idx)=>{
+    const kind = idx===1 ? "day" : (idx%9===4 ? "quote" : (idx%9===7 ? "q" : "photo"));
+    if (kind==="quote"){
+      const qt = QUOTES[(idx*5 + doy*3 + 1) % QUOTES.length];
+      return (
+        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, border:`1px solid ${C.line}`, background:`linear-gradient(150deg, ${C.butter}55, rgba(255,255,255,0.8))`, padding:"20px 16px", position:"relative" }}>
+          <span style={{ color:ch.partner, fontSize:15 }}>✦</span>
+          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16.5, lineHeight:1.4, color:C.ink, margin:"7px 0 0" }}>{qt}</p>
+        </div>
+      );
+    }
+    if (kind==="q"){
+      const qq = ENVELOPE_QS[(idx*7 + doy*11 + 4) % ENVELOPE_QS.length];
+      return (
+        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, border:`1px solid ${ch.partner}55`, background:`${ch.partner}14`, padding:"18px 16px" }}>
+          <div style={{ fontFamily:head, fontSize:9, letterSpacing:"0.16em", textTransform:"uppercase", color:ch.partner }}>Вопрос себе</div>
+          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.4, color:C.ink, margin:"7px 0 0" }}>{qq}</p>
+        </div>
+      );
+    }
+    const special = kind==="day";
+    const url = POOL[(special ? doy*17+5 : idx*7 + doy*13 + 3) % POOL.length];
+    const cap = special ? "Пин дня · только сегодня" : CAPS[(idx*11 + doy*5 + 2) % CAPS.length];
+    const h = special ? 236 : 168 + ((idx*37) % 132);
+    const id = "feed_" + (special ? "day_"+doy : ((idx*7 + doy*13 + 3) % POOL.length) + "_" + ((idx*11 + doy*5 + 2) % CAPS.length));
+    const item = { id, kind:"поток", title:cap, t:idx%6, url };
+    const isSaved = saved.some(x=>x.id===id);
+    return (
+      <div key={idx} onClick={()=>tap(id, item)} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", position:"relative", border: special ? `1.5px solid ${ch.partner}` : `1px solid ${C.line}`, background:"#fff", boxShadow: special ? `0 12px 28px -18px ${ch.partner}` : "none" }}>
+        <Photo t={idx%6} url={url} h={h} radius={0}>
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 45%, rgba(26,26,26,0.55) 100%)" }}/>
+        </Photo>
+        {special && <span className="pulseSoft" style={{ position:"absolute", top:8, left:8, background:"rgba(250,248,241,0.95)", borderRadius:99, padding:"4px 10px", fontFamily:head, fontSize:9, letterSpacing:"0.12em", color:C.ink }}>✦ ПИН ДНЯ</span>}
+        <button onClick={(e)=>{ e.stopPropagation(); doSave(item); }} aria-label="Сохранить" className="tapPop" style={{ position:"absolute", top:8, right:8, width:32, height:32, borderRadius:99, border:"none", cursor:"pointer", background:"rgba(250,248,241,0.9)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <Heart size={15} strokeWidth={1.9} color={isSaved?ch.partner:C.inkSoft} fill={isSaved?ch.partner:"none"}/>
+        </button>
+        {burst===id && <div className="heartPop" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}><Heart size={64} strokeWidth={0} color={"#fff"} fill={ch.partner}/></div>}
+        <div style={{ position:"absolute", left:10, right:10, bottom:9 }}>
+          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, lineHeight:1.3, color:"#fff", margin:0, textShadow:"0 1px 8px rgba(26,26,26,0.6)" }}>{cap}</p>
+        </div>
+      </div>
+    );
+  };
+  return (
+    <div className="screen" style={{ position:"absolute", inset:0, zIndex:60, background:C.cream, display:"flex", flexDirection:"column" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:11, padding:"14px 16px 10px", borderBottom:`1px solid ${C.line}`, background:"rgba(250,248,241,0.92)" }}>
+        <button onClick={onClose} aria-label="Назад" style={{ width:34, height:34, borderRadius:99, border:`1px solid ${C.line}`, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><ArrowLeft size={17} strokeWidth={1.8} color={C.ink}/></button>
+        <div style={{ flex:1 }}>
+          <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:21, margin:0, color:C.ink }}>Поток</h1>
+          <p style={{ fontSize:11, color:C.inkFaint, margin:0 }}>листай медленно · двойной тап сохраняет</p>
+        </div>
+        <SGFleur color={ch.partner} size={38}/>
+      </div>
+      <div className="sg-scroll" onScroll={(e)=>{ const el=e.currentTarget; if(el.scrollTop + el.clientHeight > el.scrollHeight - 700) setCount(c=> c<600 ? c+24 : c); }} style={{ flex:1, overflowY:"auto", padding:"12px 12px 90px" }}>
+        <div style={{ columns:2, columnGap:10 }}>
+          {Array.from({length:count}).map((_,i)=>card(i))}
+        </div>
+      </div>
+      <button onClick={openPin} className="sheen" style={{ position:"absolute", left:16, right:16, bottom:16, height:48, borderRadius:99, border:"none", cursor:"pointer", background:C.ink, color:C.cream, fontFamily:head, fontSize:13.5, fontWeight:500, boxShadow:"0 14px 30px -14px rgba(26,26,26,0.6)" }}>Разобрать мою эстетику ✦</button>
+    </div>
+  );
+}
+
 /* ── Раскрывашка: тяжёлые секции прячутся под иконку-заголовок ── */
 function Fold({ ch, icon, title, sub, defaultOpen=false, children }){
   const [open, setOpen] = useState(!!defaultOpen);
@@ -1304,6 +1390,7 @@ function SlowGlowAppMain() {
   const [ask, setAsk] = useState(false);
   const [rubric, setRubric] = useState(null);
   const [pinOpen, setPinOpen] = useState(false);
+  const [feed, setFeed] = useState(false);
   const [world, setWorld] = useState(null);
   const [detail, setDetail] = useState(null);
   const [saved, setSaved] = useState(()=> sgStore.get("sg_saved", []));
@@ -1456,6 +1543,8 @@ function SlowGlowAppMain() {
         .pulseSoft{animation:pulseSoft 2.4s ease-in-out infinite}
         .tapPop{transition:transform .12s ease}
         .tapPop:active{transform:scale(0.97)}
+        @keyframes heartPop{0%{transform:scale(0.3);opacity:0}30%{transform:scale(1.25);opacity:1}55%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
+        .heartPop{animation:heartPop 750ms cubic-bezier(0.16,1,0.3,1) both;pointer-events:none}
         @keyframes dustFloat{0%,100%{transform:translate(0,0) scale(1);opacity:0}14%{opacity:0.85}50%{transform:translate(10px,-18px) scale(1.18);opacity:0.95}86%{opacity:0}}
         .dust{position:absolute;border-radius:99px;pointer-events:none;animation:dustFloat 7s ease-in-out infinite}
         @keyframes petalFall{0%{transform:translateY(-10px) translateX(0) rotate(0deg);opacity:0}8%{opacity:0.95}55%{transform:translateY(200px) translateX(12px) rotate(150deg);opacity:0.9}100%{transform:translateY(390px) translateX(-8px) rotate(280deg);opacity:0}}
@@ -1540,7 +1629,7 @@ function SlowGlowAppMain() {
 
             <div ref={scrollRef} className="sg-scroll" style={{ position:"relative", zIndex:2, flex:1, overflowY:"auto", padding:"6px 24px 100px" }}>
               <div key={tab} className="screen">
-                {tab==="home" && <Home_ ch={ch} profile={profile} dna={dna} earlyAccess={earlyAccess} setRubric={setRubric} setPin={setPinOpen} setDetail={setDetail} premium={premium} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openMind={()=>setMind(true)} openCollection={()=>setCollection(capsuleOfWeek())} openLibrary={()=>setTab("collections")} streak={streak.n} bump={bumpStreak} onLive={(label)=>{ bumpStreak(); setMoments(m=>[{ id:Date.now(), t:(Date.now()%6), cap:label, date:"сегодня" }, ...m]); setCelebrate(true); setTimeout(()=>setCelebrate(false),2000); }} />}
+                {tab==="home" && <Home_ ch={ch} profile={profile} dna={dna} earlyAccess={earlyAccess} setRubric={setRubric} setPin={setPinOpen} setDetail={setDetail} premium={premium} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openMind={()=>setMind(true)} openCollection={()=>setCollection(capsuleOfWeek())} openLibrary={()=>setTab("collections")} streak={streak.n} bump={bumpStreak} openFeed={()=>setFeed(true)} onLive={(label)=>{ bumpStreak(); setMoments(m=>[{ id:Date.now(), t:(Date.now()%6), cap:label, date:"сегодня" }, ...m]); setCelebrate(true); setTimeout(()=>setCelebrate(false),2000); }} />}
                 {tab==="places" && <Places_ profile={profile} partner={ch.partner} chId={ch.id} userPlaces={userPlaces} openAddPlace={()=>setAddPlace(true)} onEditPlace={(p)=>setAddPlace(p)} onDeletePlace={(id)=>setUserPlaces(prev=>prev.filter(x=>x.id!==id))} setDetail={setDetail} premium={premium} openScan={()=>premium?setScan(true):setPaywall("scan")} openSport={()=>setSport(true)} openLang={()=>setLang(true)} openPets={()=>setPets(true)} openMind={()=>setMind(true)} toggleSave={toggleSave} isSaved={isSaved} />}
                 {tab==="journal" && <Journal_ moments={moments} />}
                 {tab==="me" && <Me_ ch={ch} chapterId={chapterId} boards={boards} earlyAccess={earlyAccess} setChapterId={setChapterId} setPin={setPinOpen} setWorld={setWorld} premium={premium} grantTrial={grantTrial} trialActive={trialActive} trialDaysLeft={trialDaysLeft} openPlus={()=>setPaywall("plus")} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openStylist={()=>premium?setStylist(true):setPaywall("stylist")} openScan={()=>premium?setScan(true):setPaywall("scan")} />}
@@ -1581,6 +1670,7 @@ function SlowGlowAppMain() {
 
         {rubric && <RubricView data={rubricsFor(chapterId)[rubric]} onClose={()=>setRubric(null)} setDetail={setDetail} />}
         {pinOpen && <PinReality ch={ch} dna={dna} onClose={()=>setPinOpen(false)} />}
+        {feed && <InspoFeed ch={ch} saved={saved} toggleSave={toggleSave} openPin={()=>{ setFeed(false); setPinOpen(true); }} onClose={()=>setFeed(false)} />}
         {addPlace && <AddPlace ch={ch} city={profile.city} editing={addPlace===true?null:addPlace} onClose={()=>setAddPlace(false)} onSave={(p)=>{ setUserPlaces(prev=> prev.some(x=>x.id===p.id) ? prev.map(x=>x.id===p.id?p:x) : [p,...prev]); setAddPlace(false); }} />}
         {mind && <MindView ch={ch} onClose={()=>setMind(false)} toggleSave={toggleSave} isSaved={isSaved} />}
         {collection && <CollectionView ch={ch} data={collection} city={profile.city} onClose={()=>setCollection(null)} />}
@@ -1906,7 +1996,7 @@ function EditorColumn({ partner }){
   );
 }
 
-function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, premium, openTravel, openLive, openMind, openCollection, openLibrary, onLive, streak, bump }) {
+function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, premium, openTravel, openLive, openMind, openCollection, openLibrary, onLive, streak, bump, openFeed }) {
   const introNow = useState(()=>{ if (sgIntroSeen) return false; sgIntroSeen = true; return true; })[0];
   const items = pick(todayFor(ch.id), 4, 0);
   const dnaSteps = dna && dna.steps && dna.steps.length ? dna.steps : null;
@@ -1943,6 +2033,21 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
       </button>
       ); })()}
       <DailyEnvelope ch={ch} bump={bump}/>
+
+      <button onClick={openFeed} className="tapPop" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:18, overflow:"hidden", padding:0, marginBottom:14, position:"relative", background:"#fff" }}>
+        <div style={{ display:"flex" }}>
+          {[IMG.parisCafe, IMG.capsuleHangers, IMG.lemonPasta].map((u,i)=>(
+            <div key={i} style={{ flex:1 }}><Photo t={i+1} url={u} h={74} radius={0}/></div>
+          ))}
+        </div>
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(90deg, rgba(26,26,26,0.55), rgba(26,26,26,0.15))", display:"flex", alignItems:"center", padding:"0 15px", gap:11 }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(255,255,255,0.85)" }}>Поток вдохновения</div>
+            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:"#fff", marginTop:2 }}>Полистать красивое ✦</div>
+          </div>
+          <ArrowRight size={17} strokeWidth={1.8} color="#fff"/>
+        </div>
+      </button>
       {earlyAccess && (
         <div style={{ position:"relative", overflow:"hidden", borderRadius:18, padding:"14px 16px", marginBottom:16, background:`linear-gradient(120deg, ${C.butter}, ${ch.partner} 70%, ${C.oat})`, boxShadow:`0 16px 34px -24px ${ch.partner}`, border:"1px solid rgba(255,255,255,0.5)" }}>
           <div style={{ position:"absolute", right:-18, top:-18, width:96, height:96, borderRadius:99, background:"rgba(255,255,255,0.22)" }}/>
@@ -2560,25 +2665,36 @@ function SavedView({ saved, ch, toggleSave, onClose }) {
         <div style={{ textAlign:"center", padding:"38px 18px", border:`1px dashed ${C.line}`, borderRadius:18, marginTop:14 }}>
           <Heart size={26} strokeWidth={1.4} color={C.inkFaint}/>
           <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.inkSoft, margin:"10px 0 4px" }}>Здесь будет то, что ты полюбишь</p>
-          <p style={{ fontSize:13, color:C.inkFaint, margin:0, lineHeight:1.5 }}>Нажимай на ♡ на статьях «Обогащения» и идеях досуга — и они соберутся сюда.</p>
+          <p style={{ fontSize:13, color:C.inkFaint, margin:0, lineHeight:1.5 }}>Двойной тап в «Потоке», ♡ на статьях и идеях — и всё любимое соберётся сюда красивой доской.</p>
         </div>
       ) : (
-        <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
-          {saved.map(it=>(
-            <div key={it.id} style={{ display:"flex", gap:12, alignItems:"stretch", border:`1px solid ${C.line}`, borderRadius:16, overflow:"hidden", background:"rgba(255,255,255,0.6)" }}>
-              <button onClick={()=>setOpen(it)} style={{ flex:1, display:"flex", gap:12, alignItems:"center", textAlign:"left", border:"none", background:"transparent", cursor:"pointer", padding:0 }}>
-                {it.t!=null && <div style={{ width:74, alignSelf:"stretch", flexShrink:0 }}><Photo t={it.t} url={it.url} q={it.q} qlang={it.ql} h={"100%"} radius={0}/></div>}
-                <div style={{ padding:"11px 4px 11px 0" }}>
-                  <div style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.1em", textTransform:"uppercase", color:ch.partner }}>{it.kind}</div>
-                  <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink, lineHeight:1.2, margin:"3px 0 0" }}>{it.title}</div>
-                  {it.sub && <div style={{ fontSize:11.5, color:C.inkFaint, marginTop:2 }}>{it.sub}</div>}
-                </div>
+        <div style={{ columns:2, columnGap:10, marginTop:6 }}>
+          {saved.map((it,i)=>{ const hh = 116 + ((String(it.id).length*29 + i*41) % 96); return (
+            <div key={it.id} className={"fade st"+((i%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", position:"relative", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.7)" }}>
+              <button onClick={()=>setOpen(it)} style={{ width:"100%", textAlign:"left", border:"none", background:"transparent", cursor:"pointer", padding:0, display:"block" }}>
+                {it.t!=null ? (
+                  <div style={{ position:"relative" }}>
+                    <Photo t={it.t} url={it.url} q={it.q} qlang={it.ql} h={hh} radius={0}>
+                      <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 40%, rgba(26,26,26,0.55) 100%)" }}/>
+                    </Photo>
+                    <div style={{ position:"absolute", left:10, right:10, bottom:8 }}>
+                      <div style={{ fontFamily:head, fontSize:8, letterSpacing:"0.12em", textTransform:"uppercase", color:"rgba(255,255,255,0.8)" }}>{it.kind}</div>
+                      <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, color:"#fff", lineHeight:1.2, marginTop:1, textShadow:"0 1px 6px rgba(26,26,26,0.6)" }}>{it.title}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding:"16px 13px 13px" }}>
+                    <div style={{ fontFamily:head, fontSize:8, letterSpacing:"0.12em", textTransform:"uppercase", color:ch.partner }}>{it.kind}</div>
+                    <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:14.5, color:C.ink, lineHeight:1.25, marginTop:3 }}>{it.title}</div>
+                    {it.sub && <div style={{ fontSize:10.5, color:C.inkFaint, marginTop:3 }}>{it.sub}</div>}
+                  </div>
+                )}
               </button>
-              <button onClick={()=>toggleSave(it)} aria-label="Убрать" style={{ flexShrink:0, border:"none", background:"transparent", cursor:"pointer", padding:"0 14px", display:"flex", alignItems:"center" }}>
-                <Heart size={19} strokeWidth={1.7} color={ch.partner} fill={ch.partner}/>
+              <button onClick={()=>toggleSave(it)} aria-label="Убрать" className="tapPop" style={{ position:"absolute", top:7, right:7, width:28, height:28, borderRadius:99, border:"none", cursor:"pointer", background:"rgba(250,248,241,0.9)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <Heart size={13} strokeWidth={1.8} color={ch.partner} fill={ch.partner}/>
               </button>
             </div>
-          ))}
+          ); })}
         </div>
       )}
     </OverlayShell>
@@ -3142,6 +3258,84 @@ function RubricView({ data, onClose, setDetail }) {
   );
 }
 /* ── Шеринг серии/дня: быстрая карточка 9:16 с большим числом ────────────────── */
+/* ── «Полный разбор»: красивый печатный документ (Сохранить как PDF).
+   Открывает новое окно с версткой разбора в фирменной эстетике и вызывает
+   печать — пользователь сохраняет PDF или печатает. Бесплатно (с вотермарком):
+   такой документ сохраняют и показывают → он продвигает приложение сам. ── */
+function _esc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function buildFullAnalysisHTML(ch, D){
+  const P = ch.partner || "#C0895E";
+  const li = (arr, cls="") => (Array.isArray(arr)?arr:[]).map(x=>`<li class="${cls}">${_esc(x)}</li>`).join("");
+  const date = new Date().toLocaleDateString("ru-RU",{ day:"numeric", month:"long", year:"numeric" });
+  const pal = (D.palette&&D.palette.length?D.palette:["#F5EEDC","#E8D5B5","#D9B98C","#B98A5E","#7A5A3E"]);
+  const sec = (title, inner) => inner ? `<section><h2>${_esc(title)}</h2>${inner}</section>` : "";
+  const habits = (D.identity&&D.identity.habits)||[];
+  const mindset = (D.identity&&D.identity.mindset)||[];
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мой разбор эстетики · Slow Glow</title>
+<style>
+  @page { margin: 20mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Georgia, "Times New Roman", serif; color:#2A2622; background:#FAF8F1; margin:0; padding:0 4mm; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .wm { font-family: Georgia, serif; letter-spacing:.28em; font-size:11px; color:#9A9186; text-transform:uppercase; }
+  .cover { padding:26px 0 18px; border-bottom:1px solid #E7E0D5; margin-bottom:22px; }
+  .cover .k { font-style:italic; font-size:15px; color:${P}; margin:14px 0 4px; }
+  h1 { font-style:italic; font-weight:normal; font-size:38px; line-height:1.06; margin:2px 0 0; }
+  .date { font-size:12px; color:#9A9186; margin-top:10px; }
+  .twin { border:1px solid ${P}55; border-radius:14px; padding:16px 18px; margin:18px 0; background:linear-gradient(135deg,#F5EAD9,#FAF8F1); }
+  .twin .k { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:${P}; }
+  .twin .n { font-style:italic; font-size:28px; margin:4px 0 6px; }
+  .twin p { margin:0; font-size:13.5px; color:#4a443d; }
+  .pal { display:flex; height:26px; border-radius:7px; overflow:hidden; border:1px solid #E7E0D5; margin:6px 0 2px; }
+  .pal span { flex:1; }
+  .palcap { font-size:10.5px; color:#9A9186; margin:0 0 4px; }
+  section { margin:20px 0; page-break-inside:avoid; }
+  h2 { font-style:italic; font-weight:normal; font-size:20px; color:#2A2622; margin:0 0 10px; padding-bottom:6px; border-bottom:1px solid #ECE5DA; }
+  p.lead { font-style:italic; font-size:15px; line-height:1.55; margin:0 0 6px; }
+  ul { margin:0; padding-left:0; list-style:none; }
+  li { font-size:13.5px; line-height:1.5; margin:0 0 7px; padding-left:20px; position:relative; }
+  li:before { content:"✦"; position:absolute; left:0; color:${P}; font-size:11px; top:2px; }
+  li.num { counter-increment:c; }
+  ol { counter-reset:c; margin:0; padding:0; list-style:none; }
+  ol li:before { content:counter(c); color:#fff; background:${P}; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-style:italic; }
+  .chips { font-size:13px; color:#4a443d; line-height:1.7; }
+  .chips b { font-style:italic; font-weight:normal; color:${P}; }
+  .foot { margin-top:26px; padding-top:12px; border-top:1px solid #E7E0D5; display:flex; justify-content:space-between; font-size:11px; color:#9A9186; }
+  @media print { .noprint { display:none !important; } body { padding:0; } }
+  .bar { position:sticky; top:0; background:#FAF8F1; padding:12px 0; text-align:center; }
+  .bar button { font-family:Georgia,serif; font-size:14px; padding:11px 26px; border-radius:99px; border:none; background:#2A2622; color:#FAF8F1; cursor:pointer; }
+</style></head><body>
+  <div class="bar noprint"><button onclick="window.print()">Сохранить как PDF / Печать</button></div>
+  <div class="cover">
+    <div class="wm">S L O W &nbsp; G L O W</div>
+    <div class="k">Полный разбор твоей эстетики</div>
+    <h1>${_esc((D.twin&&D.twin.name)|| (D.seeking&&D.seeking[0]) || "Твоя эстетика")}</h1>
+    <div class="date">${_esc(date)}</div>
+  </div>
+  ${D.twin&&D.twin.name?`<div class="twin"><div class="k">Твой эстетический двойник</div><div class="n">${_esc(D.twin.name)}</div><p>${_esc(D.twin.essence||"")}</p></div>`:""}
+  <div class="pal">${pal.map(c=>`<span style="background:${_esc(c)}"></span>`).join("")}</div>
+  <div class="palcap">Палитра твоей эстетики — прямо с твоих пинов</div>
+  ${sec("Что говорят твои пины", D.read?`<p class="lead">${_esc(D.read)}</p>`:"")}
+  ${sec("Что тебя притягивает", D.patterns&&D.patterns.length?`<ul>${li(D.patterns)}</ul>`:"")}
+  ${sec("Точные шаги под твою эстетику", D.actions&&D.actions.length?`<ol>${(D.actions||[]).map(a=>`<li class="num">${_esc(a)}</li>`).join("")}</ol>`:"")}
+  ${sec("Как стать этой женщиной", (D.identity&&D.identity.who)?`<p class="lead">${_esc(D.identity.who)}</p>${habits.length?`<p style="font-size:12px;color:#9A9186;margin:8px 0 6px">Ежедневные привычки по 10–15 минут:</p><ul>${li(habits)}</ul>`:""}${mindset.length?`<p class="chips" style="margin-top:8px">${mindset.map(m=>`<b>${_esc(m)}</b>`).join(" &nbsp;·&nbsp; ")}</p>`:""}`:"")}
+  ${sec("Образы под твою эстетику", D.outfits&&D.outfits.length?`<ul>${li(D.outfits)}</ul><p style="font-size:11px;color:#9A9186;margin-top:4px">Собирай из своего гардероба — стиль не про покупки.</p>`:"")}
+  ${sec("Список покупок для дома", D.shopping&&D.shopping.length?`<ul>${li(D.shopping)}</ul>`:"")}
+  ${sec("Ритуалы, которые это закрепят", D.rituals&&D.rituals.length?`<ul>${li(D.rituals)}</ul>`:"")}
+  ${(D.today||D.week||D.month)?sec("Твой мягкий план", `${D.today?`<p class="lead">Сегодня: ${_esc(Array.isArray(D.today)?D.today[0]:D.today)}</p>`:""}${D.week&&D.week.length?`<p style="font-size:12px;color:#9A9186;margin:8px 0 4px">На неделю:</p><ul>${li(D.week)}</ul>`:""}${D.month&&D.month.length?`<p style="font-size:12px;color:#9A9186;margin:8px 0 4px">На месяц:</p><ul>${li(D.month)}</ul>`:""}`):""}
+  <div class="foot"><span>slow-glow.app</span><span>Твоя эстетика → реальная жизнь ✦</span></div>
+</body></html>`;
+}
+function openFullAnalysis(ch, D){
+  try{
+    sgTrack("pdf_open");
+    const w = window.open("", "_blank");
+    if(!w){ alert("Разреши всплывающие окна, чтобы сохранить разбор в PDF ✦"); return; }
+    w.document.open(); w.document.write(buildFullAnalysisHTML(ch, D)); w.document.close(); w.focus();
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 600);
+  }catch(e){}
+}
+
 async function shareTwinCard(ch, twin, palette){
   try{
     sgTrack("share_twin", { name: twin && twin.name });
@@ -3431,6 +3625,10 @@ function PinReality({ ch, dna, onClose }) {
       </Fold>)}
 
       <ShareDream ch={ch} D={D}/>
+
+      <button onClick={()=>openFullAnalysis(ch, D)} className="tapPop" style={{ width:"100%", height:48, borderRadius:99, border:`1px solid ${ch.partner}`, background:`${ch.partner}12`, cursor:"pointer", color:C.ink, fontFamily:head, fontSize:13.5, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:22 }}>
+        <Download size={16} strokeWidth={1.9} color={ch.partner}/>Скачать полный разбор (PDF)
+      </button>
 
       <ShareReality ch={ch} D={D}/>
       <ShareBoard ch={ch} imgs={imgs} D={D}/>
