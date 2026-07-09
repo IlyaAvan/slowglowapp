@@ -75,27 +75,49 @@ async function getToken() {
   return cached.token;
 }
 
-/* Загружаем одно фото в хранилище и возвращаем его id */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* Загружаем одно фото в хранилище и возвращаем его id.
+   429 = либо слишком часто, либо кончились токены. На «слишком часто»
+   помогает пауза, поэтому пробуем до трёх раз с нарастающей задержкой. */
 async function uploadImage(token, block, i) {
   const mime = (block.source && block.source.media_type) || "image/jpeg";
   const bytes = Buffer.from(block.source.data, "base64");
   const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
 
-  const form = new FormData();
-  form.append("file", new Blob([bytes], { type: mime }), `pin_${i + 1}.${ext}`);
-  form.append("purpose", "general");
+  let last = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await sleep(900 * attempt);            // 0.9с, затем 1.8с
 
-  const r = await fetch(BASE + "/files", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + token, Accept: "application/json" },
-    body: form,
-  });
+    const form = new FormData();
+    form.append("file", new Blob([bytes], { type: mime }), `pin_${i + 1}.${ext}`);
+    form.append("purpose", "general");
 
-  const t = await r.text();
-  if (!r.ok) throw new Error("загрузка фото " + (i + 1) + ": " + r.status + " " + t.slice(0, 160));
-  const j = JSON.parse(t);
-  if (!j.id) throw new Error("хранилище не вернуло id файла");
-  return j.id;
+    const r = await fetch(BASE + "/files", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, Accept: "application/json" },
+      body: form,
+    });
+
+    const t = await r.text();
+    if (r.ok) {
+      const j = JSON.parse(t);
+      if (j.id) return j.id;
+      throw new Error("хранилище не вернуло id файла");
+    }
+
+    last = r.status + " " + t.slice(0, 160);
+    if (r.status !== 429 && r.status < 500) break;      // 400/401/413 повторять бессмысленно
+  }
+
+  if (/^429/.test(last)) {
+    throw new Error(
+      "GigaChat не принял фото " + (i + 1) + " (429). Чаще всего это значит, что на аккаунте " +
+      "закончились токены: обработка одного изображения стоит до 1792 токенов. " +
+      "Проверь остаток в личном кабинете GigaChat. Ответ Сбера: " + last
+    );
+  }
+  throw new Error("загрузка фото " + (i + 1) + ": " + last);
 }
 
 export default async function handler(req, res) {
@@ -128,6 +150,7 @@ export default async function handler(req, res) {
         if (p.type === "text") {
           texts.push(p.text);
         } else if (p.type === "image" && p.source && p.source.type === "base64") {
+          if (shot) await sleep(350);                    // не долбим хранилище подряд
           attachments.push(await uploadImage(token, p, shot++));
         } else if (p.type === "image_url" && p.image_url && /^data:/.test(p.image_url.url || "")) {
           const [head, data] = p.image_url.url.split(",");
