@@ -26,6 +26,10 @@ import { randomUUID } from "crypto";
    послабление: обращаемся только к домену Сбера. Пакет undici не нужен. */
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
+/* По умолчанию Vercel обрывает функцию через 10 секунд. Загрузка шести фото
+   в хранилище GigaChat и сам разбор в это не укладываются. */
+export const maxDuration = 60;
+
 const OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const BASE = "https://gigachat.devices.sberbank.ru/api/v1";
 
@@ -87,7 +91,7 @@ async function uploadImage(token, block, i) {
 
   let last = "";
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await sleep(900 * attempt);            // 0.9с, затем 1.8с
+    if (attempt) await sleep(700 * attempt);            // 0.7с, затем 1.4с
 
     const form = new FormData();
     form.append("file", new Blob([bytes], { type: mime }), `pin_${i + 1}.${ext}`);
@@ -142,21 +146,28 @@ export default async function handler(req, res) {
     for (const m of body.messages) {
       const parts = Array.isArray(m.content) ? m.content : [{ type: "text", text: String(m.content || "") }];
       const texts = [];
-      const attachments = [];
-      let shot = 0;
+      const shots = [];   // сначала собираем картинки, потом грузим пачками
 
       for (const p of parts) {
         if (!p) continue;
         if (p.type === "text") {
           texts.push(p.text);
         } else if (p.type === "image" && p.source && p.source.type === "base64") {
-          if (shot) await sleep(350);                    // не долбим хранилище подряд
-          attachments.push(await uploadImage(token, p, shot++));
+          shots.push(p);
         } else if (p.type === "image_url" && p.image_url && /^data:/.test(p.image_url.url || "")) {
           const [head, data] = p.image_url.url.split(",");
           const media = (head.match(/data:([^;]+)/) || [])[1] || "image/jpeg";
-          attachments.push(await uploadImage(token, { source: { media_type: media, data } }, shot++));
+          shots.push({ source: { media_type: media, data } });
         }
+      }
+
+      /* Три загрузки одновременно: втрое быстрее последовательных,
+         и при этом Сбер не отвечает 429 на шквал запросов. */
+      const attachments = [];
+      for (let i = 0; i < shots.length; i += 3) {
+        const batch = shots.slice(i, i + 3);
+        const ids = await Promise.all(batch.map((p, k) => uploadImage(token, p, i + k)));
+        attachments.push(...ids);
       }
 
       const msg = { role: m.role === "assistant" ? "assistant" : "user", content: texts.join("\n") };

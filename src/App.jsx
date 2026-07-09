@@ -3778,10 +3778,8 @@ function PinReality({ ch, dna, onClose }) {
       for (let i=0;i<list.length;i++){
         blocks.push(await sgShrinkBlock({ type:"image", source:{ type:"base64", media_type:list[i].media, data:list[i].b64 } }));
       }
-      // Проверка зрения на первом кадре: если модель не может назвать, что на фото,
-      // значит картинки до неё не доходят — и разбор строить не на чем.
-      const vt = await sgVisionSelfTest(blocks[0]);
-      if (!vt.txt) { reason = "фото не доходят до модели — " + vt.reason; throw new Error(reason); }
+      // Отдельная «проверка зрения» убрана: она удваивала время запроса.
+      // Что модель действительно смотрела на кадры, проверяем ниже по полю seen.
       for (let attempt=0; attempt<2 && !ok; attempt++){
         try{
           const res = await sgVisionAsk({ sys, shots: blocks, maxTokens:3400,
@@ -3789,7 +3787,7 @@ function PinReality({ ch, dna, onClose }) {
           if (!res.txt) { reason = res.reason; continue; }
           const txt = res.txt;
           const obj = sgParseJSON(txt);
-          if (obj && (!Array.isArray(obj.seen) || obj.seen.length===0)) { reason = "модель не описала ни одного фото — скорее всего, картинки не дошли до неё"; continue; }
+          if (obj && (!Array.isArray(obj.seen) || obj.seen.length===0)) { reason = "модель не описала ни одного фото — похоже, картинки до неё не дошли"; continue; }
           if (obj && (Array.isArray(obj.patterns) || obj.read)) {
             const _a=(x)=>Array.isArray(x)?x:[];
             const clean={ ...obj, seen:_a(obj.seen).map(s=>String(s)).slice(0,8), patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month), outfits:_a(obj.outfits), palette:_a(obj.palette).filter(x=>/^#[0-9a-fA-F]{3,8}$/.test(String(x))).slice(0,6) };
