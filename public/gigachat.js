@@ -33,6 +33,13 @@ export const maxDuration = 60;
 const OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const BASE = "https://gigachat.devices.sberbank.ru/api/v1";
 
+/* Модели пробуются по очереди. Если у модели кончились токены (402), нет доступа (404)
+   или она отвечает ошибкой сервера — прокси молча переходит к следующей.
+   Порядок можно переопределить переменной GIGACHAT_MODELS (через запятую). */
+const MODELS = (process.env.GIGACHAT_MODELS || process.env.GIGACHAT_MODEL ||
+  "GigaChat-Pro,GigaChat-2-Max,GigaChat-Max,GigaChat")
+  .split(",").map((m) => m.trim()).filter(Boolean);
+
 /* Тело может прийти разобранным, строкой или потоком — читаем все варианты */
 async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
@@ -114,6 +121,12 @@ async function uploadImage(token, block, i) {
     if (r.status !== 429 && r.status < 500) break;      // 400/401/413 повторять бессмысленно
   }
 
+  if (/^402/.test(last)) {
+    throw new Error(
+      "На аккаунте GigaChat нет токенов, чтобы принять фото " + (i + 1) + " (402). " +
+      "Обработка одного изображения стоит до 1792 токенов — проверь баланс в кабинете."
+    );
+  }
   if (/^429/.test(last)) {
     throw new Error(
       "GigaChat не принял фото " + (i + 1) + " (429). Чаще всего это значит, что на аккаунте " +
@@ -175,34 +188,49 @@ export default async function handler(req, res) {
       messages.push(msg);
     }
 
-    const r = await fetch(BASE + "/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + token,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.GIGACHAT_MODEL || "GigaChat-Pro",
-        messages,
-        max_tokens: Math.min(Number(body.max_tokens) || 1500, 8000),
-        temperature: 0.7,
-      }),
-    });
+    /* Перебираем модели: 402 (нет токенов), 404 (нет доступа), 429 и 5xx —
+       повод попробовать следующую. Остальные ошибки возвращаем как есть. */
+    const tried = [];
+    for (const model of MODELS) {
+      const r = await fetch(BASE + "/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: Math.min(Number(body.max_tokens) || 1500, 8000),
+          temperature: 0.7,
+        }),
+      });
 
-    const t = await r.text();
-    if (!r.ok) {
-      console.error("[gigachat] chat", r.status, t.slice(0, 400));
-      return res.status(r.status).json({ error: "GigaChat: " + r.status + " " + t.slice(0, 200) });
+      const t = await r.text();
+
+      if (r.ok) {
+        const j = JSON.parse(t);
+        const text = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "";
+        console.log("[gigachat] ответила модель:", model);
+        res.setHeader("content-type", "application/json; charset=utf-8");
+        res.setHeader("cache-control", "no-store");
+        return res.status(200).json({ content: [{ type: "text", text }], model });
+      }
+
+      tried.push(model + " → " + r.status);
+      console.error("[gigachat]", model, r.status, t.slice(0, 200));
+
+      const retryable = r.status === 402 || r.status === 404 || r.status === 429 || r.status >= 500;
+      if (!retryable) {
+        return res.status(r.status).json({ error: "GigaChat (" + model + "): " + r.status + " " + t.slice(0, 200) });
+      }
     }
 
-    const j = JSON.parse(t);
-    const text = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "";
-
-    // Отдаём в формате Anthropic — приложение уже умеет его читать
-    res.setHeader("content-type", "application/json; charset=utf-8");
-    res.setHeader("cache-control", "no-store");
-    return res.status(200).json({ content: [{ type: "text", text }] });
+    return res.status(402).json({
+      error: "Ни одна модель не ответила: " + tried.join(", ") +
+             ". Код 402 значит, что на модели закончились токены — проверь баланс в кабинете GigaChat.",
+    });
   } catch (e) {
     console.error("[gigachat]", e);
     return res.status(502).json({ error: String((e && e.message) || e) });
