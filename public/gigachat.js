@@ -1,155 +1,170 @@
-// Vercel serverless function -> /api/gigachat
-// Прокси приложения к GigaChat (Сбер). Возвращает ответ в формате, который ждёт
-// приложение: { content: [{ type:"text", text:"..." }] }.
-//
-// Поддерживает ФОТО: если сообщение содержит изображения (анализатор пинов,
-// «сохранения», стилист), они загружаются в хранилище GigaChat и цепляются через
-// attachments к запросу — тогда модель их реально «видит». Для запросов с фото
-// используется vision-модель (по умолчанию GigaChat-Max), с откатом в текст.
-//
-// Переменные окружения (необязательны — ключ уже вписан по умолчанию):
-//   GIGACHAT_AUTH_KEY     — Authorization key (Base64) из личного кабинета
-//   GIGACHAT_SCOPE        — GIGACHAT_API_PERS | _B2B | _CORP (по умолчанию PERS)
-//   GIGACHAT_MODEL        — текстовая модель (по умолчанию GigaChat)
-//   GIGACHAT_VISION_MODEL — модель для фото (по умолчанию GigaChat-Max)
-// Без ключа отвечает { content: [] } — приложение берёт запасные ответы.
+/* ═══════════════════════════════════════════════════════════════════
+   /api/gigachat — прокси к GigaChat, который УМЕЕТ ПОКАЗЫВАТЬ ФОТО.
 
-import crypto from "node:crypto";
+   Почему так: GigaChat не принимает картинки внутри сообщения.
+   Каждое фото сначала загружается в хранилище (POST /files), а в чат
+   передаются только идентификаторы файлов (поле attachments).
+   Этот файл делает это сам — приложение менять не нужно.
 
-export const config = { maxDuration: 60 };
+   Установка:
+   1) Положи файл как  api/gigachat.js  (поверх старого)
+   2) В переменные окружения проекта добавь:
+        GIGACHAT_AUTH_KEY = <ключ авторизации из личного кабинета, длинная строка Base64>
+      Необязательно:
+        GIGACHAT_SCOPE = GIGACHAT_API_PERS   (для физлиц; для юрлиц GIGACHAT_API_CORP)
+        GIGACHAT_MODEL = GigaChat-Pro        (модель со зрением)
+   3) Сделай редеплой.
 
-// ВАЖНО: ключ задаётся ТОЛЬКО через переменную окружения GIGACHAT_AUTH_KEY
-// (Vercel → Settings → Environment Variables). В коде ключа больше нет — так он
-// не утечёт с исходниками. Без переменной ИИ отвечает пустым (запасные ответы).
-const AUTH_KEY = process.env.GIGACHAT_AUTH_KEY || "";
-const SCOPE = process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS";
-const MODEL_TEXT = process.env.GIGACHAT_MODEL || "GigaChat-Pro"; // Pro умнее базовой; вернуть дешёвую: GIGACHAT_MODEL=GigaChat
-const MODEL_VISION = process.env.GIGACHAT_VISION_MODEL || "GigaChat-Max";
-const OAUTH = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
-const API = "https://gigachat.devices.sberbank.ru/api/v1";
-const EXT = { "image/png":"png","image/webp":"webp","image/gif":"gif","image/jpeg":"jpg","image/jpg":"jpg" };
+   Приложение шлёт тело в формате Anthropic — на выходе получает тот же формат:
+   { content: [ { type: "text", text: "…" } ] }
+   ═══════════════════════════════════════════════════════════════════ */
 
-let _tok = null; // { token, exp }
+import { Agent, setGlobalDispatcher } from "undici";
+import { randomUUID } from "crypto";
+
+/* Серверы Сбера отдают сертификат российского УЦ, которого нет в списке доверенных
+   у Node на большинстве хостингов. Без этой строки любой запрос падает с ошибкой
+   сертификата. Мы обращаемся только к домену Сбера, но знай: проверка отключена. */
+setGlobalDispatcher(new Agent({ connect: { rejectUnauthorized: false } }));
+
+const OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
+const BASE = "https://gigachat.devices.sberbank.ru/api/v1";
+
+export const config = { api: { bodyParser: { sizeLimit: "20mb" } } };
+
+/* Токен живёт ~30 минут — держим его в памяти функции, чтобы не дёргать OAuth каждый раз */
+let cached = { token: null, until: 0 };
 
 async function getToken() {
-  if (_tok && _tok.exp > Date.now() + 60000) return _tok.token;
-  const r = await fetch(OAUTH, {
+  if (cached.token && Date.now() < cached.until - 60_000) return cached.token;
+
+  const key = process.env.GIGACHAT_AUTH_KEY;
+  if (!key) throw new Error("не задан GIGACHAT_AUTH_KEY");
+
+  /* Ключ авторизации GigaChat — длинная строка Base64 (client_id:secret).
+     Если он начинается с sk_ / sk-, это ключ ДРУГОГО сервиса, и Сбер его не примет. */
+  if (/^sk[-_]/i.test(key.trim())) {
+    throw new Error(
+      "GIGACHAT_AUTH_KEY похож на ключ другого сервиса (начинается с 'sk_'). " +
+      "Нужен ключ авторизации GigaChat из личного кабинета — длинная строка Base64 без префикса."
+    );
+  }
+
+  const r = await fetch(OAUTH_URL, {
     method: "POST",
     headers: {
-      "Authorization": "Basic " + AUTH_KEY,
-      "RqUID": crypto.randomUUID(),
+      Authorization: "Basic " + key,
+      RqUID: randomUUID(),
       "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
+      Accept: "application/json",
     },
-    body: "scope=" + encodeURIComponent(SCOPE),
+    body: "scope=" + (process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS"),
   });
-  const d = await r.json();
-  if (!d || !d.access_token) throw new Error("gigachat: no access_token");
-  _tok = { token: d.access_token, exp: Date.now() + 25 * 60 * 1000 };
-  return _tok.token;
+
+  const t = await r.text();
+  if (!r.ok) throw new Error("OAuth " + r.status + ": " + t.slice(0, 200));
+
+  const j = JSON.parse(t);
+  cached = { token: j.access_token, until: Number(j.expires_at) || Date.now() + 25 * 60_000 };
+  return cached.token;
 }
 
-async function uploadImage(token, mime, b64) {
-  const bin = Buffer.from(b64, "base64");
-  if (bin.length > 14 * 1024 * 1024) throw new Error("image too large"); // лимит GigaChat 15 МБ
-  const fd = new FormData();
-  fd.append("file", new Blob([bin], { type: mime }), "image." + (EXT[mime] || "jpg"));
-  fd.append("purpose", "general");
-  const r = await fetch(API + "/files", {
+/* Загружаем одно фото в хранилище и возвращаем его id */
+async function uploadImage(token, block, i) {
+  const mime = (block.source && block.source.media_type) || "image/jpeg";
+  const bytes = Buffer.from(block.source.data, "base64");
+  const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+
+  const form = new FormData();
+  form.append("file", new Blob([bytes], { type: mime }), `pin_${i + 1}.${ext}`);
+  form.append("purpose", "general");
+
+  const r = await fetch(BASE + "/files", {
     method: "POST",
-    headers: { "Authorization": "Bearer " + token, "Accept": "application/json" }, // Content-Type задаёт FormData
-    body: fd,
+    headers: { Authorization: "Bearer " + token, Accept: "application/json" },
+    body: form,
   });
-  const d = await r.json();
-  if (!d || !d.id) throw new Error("gigachat: upload failed");
-  return d.id;
-}
 
-async function deleteFile(token, id) {
-  try { await fetch(API + "/files/" + id + "/delete", { method: "POST", headers: { "Authorization": "Bearer " + token, "Accept": "application/json" } }); } catch (e) {}
-}
-
-async function chat(token, model, messages, temperature, max_tokens) {
-  const r = await fetch(API + "/chat/completions", {
-    method: "POST",
-    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json", "Accept": "application/json" },
-    body: JSON.stringify({ model, messages, temperature, max_tokens }),
-  });
-  let text = "";
-  try { const d = await r.json(); text = d && d.choices && d.choices[0] && d.choices[0].message ? (d.choices[0].message.content || "") : ""; } catch (e) {}
-  return { ok: r.ok, text };
-}
-
-async function gigachat(body) {
-  if (!AUTH_KEY) return { content: [] };
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"; // сертификат НУЦ Минцифры РФ
-  const token = await getToken();
-
-  const temperature = typeof body.temperature === "number" ? body.temperature : 0.6;
-  const max_tokens = Math.min(body.max_tokens || 1024, 8192);
-  const uploaded = [];
-  let hadImages = false;
-
-  // Anthropic-стиль -> GigaChat, с загрузкой изображений
-  const messages = [];
-  if (body.system) messages.push({ role: "system", content: String(body.system) });
-  for (const m of (body.messages || [])) {
-    const role = m.role === "assistant" ? "assistant" : "user";
-    if (typeof m.content === "string") { messages.push({ role, content: m.content }); continue; }
-    if (Array.isArray(m.content)) {
-      const texts = [];
-      const atts = [];
-      for (const c of m.content) {
-        if (c && c.type === "text" && c.text) texts.push(c.text);
-        else if (c && c.type === "image" && c.source && c.source.type === "base64" && c.source.data) {
-          try { const id = await uploadImage(token, c.source.media_type || "image/jpeg", c.source.data); uploaded.push(id); atts.push(id); hadImages = true; } catch (e) {}
-        }
-      }
-      const msg = { role, content: texts.join("\n\n") || "Проанализируй вложенные изображения." };
-      if (atts.length) msg.attachments = atts;
-      messages.push(msg);
-      continue;
-    }
-    messages.push({ role, content: String(m.content ?? "") });
-  }
-
-  try {
-    // Основной вызов: с фото — на vision-модели
-    let res = await chat(token, hadImages ? MODEL_VISION : MODEL_TEXT, messages, temperature, max_tokens);
-    // Откат 1: фото не сработали — тем же контентом без вложений на текстовой модели
-    if ((!res.ok || !res.text) && hadImages) {
-      const textOnly = messages.map(({ attachments, ...r }) => r);
-      res = await chat(token, MODEL_TEXT, textOnly, temperature, max_tokens);
-    }
-    return { content: res.text ? [{ type: "text", text: res.text }] : [] };
-  } finally {
-    if (uploaded.length) await Promise.allSettled(uploaded.map(id => deleteFile(token, id)));
-  }
-}
-
-/* ── Защита эндпоинта: до 20 ИИ-запросов в минуту с одного IP + проверка Origin ── */
-const _hits = new Map();
-function allowed(req) {
-  const org = req.headers.origin || "";
-  const host = req.headers.host || "";
-  const extra = process.env.SG_ALLOWED_ORIGIN || "";
-  if (org && !(org.includes(host) || (extra && org.includes(extra)))) return false;
-  const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim();
-  const now = Date.now();
-  const arr = (_hits.get(ip) || []).filter(t => now - t < 60000);
-  if (arr.length >= 20) { _hits.set(ip, arr); return false; }
-  arr.push(now); _hits.set(ip, arr);
-  if (_hits.size > 5000) _hits.clear();
-  return true;
+  const t = await r.text();
+  if (!r.ok) throw new Error("загрузка фото " + (i + 1) + ": " + r.status + " " + t.slice(0, 160));
+  const j = JSON.parse(t);
+  if (!j.id) throw new Error("хранилище не вернуло id файла");
+  return j.id;
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
-  if (!allowed(req)) { res.status(200).json({ content: [] }); return; }
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Только POST" });
+
+  const body = typeof req.body === "string" ? safeJson(req.body) : req.body;
+  if (!body || !Array.isArray(body.messages)) {
+    return res.status(400).json({ error: "Ожидается { max_tokens, system, messages }" });
+  }
+
   try {
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
-    res.status(200).json(await gigachat(body));
+    const token = await getToken();
+
+    /* Разбираем сообщения приложения: текст остаётся текстом,
+       картинки уезжают в хранилище и превращаются в attachments. */
+    const messages = [];
+    if (body.system) messages.push({ role: "system", content: String(body.system) });
+
+    for (const m of body.messages) {
+      const parts = Array.isArray(m.content) ? m.content : [{ type: "text", text: String(m.content || "") }];
+      const texts = [];
+      const attachments = [];
+      let shot = 0;
+
+      for (const p of parts) {
+        if (!p) continue;
+        if (p.type === "text") {
+          texts.push(p.text);
+        } else if (p.type === "image" && p.source && p.source.type === "base64") {
+          attachments.push(await uploadImage(token, p, shot++));
+        } else if (p.type === "image_url" && p.image_url && /^data:/.test(p.image_url.url || "")) {
+          const [head, data] = p.image_url.url.split(",");
+          const media = (head.match(/data:([^;]+)/) || [])[1] || "image/jpeg";
+          attachments.push(await uploadImage(token, { source: { media_type: media, data } }, shot++));
+        }
+      }
+
+      const msg = { role: m.role === "assistant" ? "assistant" : "user", content: texts.join("\n") };
+      if (attachments.length) msg.attachments = attachments;
+      messages.push(msg);
+    }
+
+    const r = await fetch(BASE + "/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.GIGACHAT_MODEL || "GigaChat-Pro",
+        messages,
+        max_tokens: Math.min(Number(body.max_tokens) || 1500, 8000),
+        temperature: 0.7,
+      }),
+    });
+
+    const t = await r.text();
+    if (!r.ok) {
+      console.error("[gigachat] chat", r.status, t.slice(0, 400));
+      return res.status(r.status).send(t);
+    }
+
+    const j = JSON.parse(t);
+    const text = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "";
+
+    // Отдаём в формате Anthropic — приложение уже умеет его читать
+    res.setHeader("content-type", "application/json; charset=utf-8");
+    res.setHeader("cache-control", "no-store");
+    return res.status(200).json({ content: [{ type: "text", text }] });
   } catch (e) {
-    res.status(200).json({ content: [] }); // мягкий откат -> запасной ответ
+    console.error("[gigachat]", e);
+    return res.status(502).json({ error: String((e && e.message) || e) });
   }
 }
+
+function safeJson(s) { try { return JSON.parse(s); } catch { return null; } }

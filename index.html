@@ -1,55 +1,132 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Slow Glow — живи красиво</title>
-    <meta name="theme-color" content="#FAF8F1" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Slow Glow" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/icon-192-v2.png" />
-    <link rel="icon" type="image/png" href="/icon-192-v2.png" />
-    <!-- Яндекс.Метрика: аналитика (посещения, воронки, когорты-удержание, Вебвизор). Работает в РФ без VPN. -->
-    <script>
-      // ═══════════════════════════════════════════════════════════════════
-      //  ЯНДЕКС.МЕТРИКА — впиши сюда номер своего счётчика (8 цифр) и всё.
-      //  Где взять: metrika.yandex.ru → «Добавить счётчик» → скопируй номер.
-      //  Пример:  window.SG_METRIKA_ID = 98765432;
-      //  Пока стоит 0 — аналитика выключена (приложение работает как обычно).
-      // ═══════════════════════════════════════════════════════════════════
-      window.SG_METRIKA_ID = 110469238;
-      (function(m,e,t,r,i){
-        if(!window.SG_METRIKA_ID){return;}
-        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();
-        var k=e.createElement(t),a=e.getElementsByTagName(t)[0];k.async=1;k.src=r;a.parentNode.insertBefore(k,a);
-      })(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
-      if(window.SG_METRIKA_ID){ ym(window.SG_METRIKA_ID,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true}); }
-    </script>
-    <style>
-      html,body,#root{height:100%;margin:0;background:#FAF8F1}
-      /* Локальные шрифты — грузятся с твоего хостинга, без обращений за рубеж.
-         Положи файлы в public/fonts/. Если файла нет, аккуратно подставится системный шрифт. */
-      @font-face{font-family:'Satoshi';src:url('/fonts/Satoshi-Light.woff2') format('woff2');font-weight:300;font-style:normal;font-display:swap}
-      @font-face{font-family:'Satoshi';src:url('/fonts/Satoshi-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-      @font-face{font-family:'Satoshi';src:url('/fonts/Satoshi-Medium.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
-      @font-face{font-family:'Instrument Serif';src:url('/fonts/InstrumentSerif-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-      @font-face{font-family:'Instrument Serif';src:url('/fonts/InstrumentSerif-Italic.woff2') format('woff2');font-weight:400;font-style:italic;font-display:swap}
-      @font-face{font-family:'Inter';src:url('/fonts/Inter-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-      @font-face{font-family:'Inter';src:url('/fonts/Inter-Medium.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
-      @font-face{font-family:'Caveat';src:url('/fonts/Caveat-Medium.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", function () {
-          navigator.serviceWorker.register("/service-worker.js").catch(function () {});
-        });
-      }
-    </script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#FAF8F1" />
+
+  <title>Slow Glow — замечать, а не успевать</title>
+  <meta name="description" content="Slow Glow — приложение о том, как замечать красивое в обычном дне." />
+
+  <!-- Соцсети: подставь свой домен и картинку 1200×630 -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Slow Glow" />
+  <meta property="og:description" content="Замечать, а не успевать." />
+  <meta property="og:image" content="/og.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Шрифты приложения -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       НАСТРОЙКИ. Здесь всё, что нужно менять руками.
+       ═══════════════════════════════════════════════════════════════ -->
+  <script>
+    // Адрес ИИ-прокси. Модель по этому адресу ВИДИТ изображения —
+    // от этого зависит весь разбор сохранений.
+    // "/api/gigachat" — прокси к GigaChat (работает из России).
+    // "/api/claude"   — прокси к Claude (нужен ключ Anthropic).
+    window.SG_AI_ENDPOINT = "/api/gigachat";
+
+    // Яндекс.Метрика: впиши номер счётчика вместо 0. Больше нигде ничего менять не надо.
+    // Пока стоит 0 — метрика просто не включается.
+    window.SG_METRIKA_ID = 0;
+  </script>
+
+  <style>
+    :root { color-scheme: light; }
+    html, body { margin: 0; padding: 0; background: #FAF8F1; }
+    body {
+      font-family: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #1A1A1A;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overscroll-behavior-y: none;      /* без «резинки» при скролле на iOS */
+      -webkit-tap-highlight-color: transparent;
+    }
+    #root { min-height: 100dvh; }
+
+    /* Заставка на время загрузки: тот же градиентный круг, что в заставке роликов */
+    #sg-boot {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: #FAF8F1;
+      transition: opacity .5s ease;
+    }
+    #sg-boot.hidden { opacity: 0; pointer-events: none; }
+    #sg-boot .orb {
+      width: 96px; height: 96px; border-radius: 50%;
+      background: linear-gradient(135deg, #F6E7A6, #F6B79A 65%, #F2B6C6);
+      box-shadow: 0 18px 40px -20px rgba(216,190,168,.9);
+      animation: sg-breathe 2.6s ease-in-out infinite;
+    }
+    @keyframes sg-breathe {
+      0%, 100% { transform: scale(1);    opacity: .92; }
+      50%      { transform: scale(1.06); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #sg-boot .orb { animation: none; }
+    }
+    noscript { display: block; padding: 32px; text-align: center; color: #6E6A60; }
+  </style>
+</head>
+
+<body>
+  <div id="sg-boot"><div class="orb"></div></div>
+
+  <div id="root"></div>
+
+  <noscript>Slow Glow работает с включённым JavaScript.</noscript>
+
+  <!-- Точка входа приложения. Для Vite это /src/main.jsx -->
+  <script type="module" src="/src/main.jsx"></script>
+
+  <script>
+    // Убираем заставку, когда приложение отрисовалось
+    (function () {
+      var boot = document.getElementById('sg-boot');
+      var root = document.getElementById('root');
+      var done = function () {
+        if (!boot) return;
+        boot.classList.add('hidden');
+        setTimeout(function () { boot && boot.remove(); }, 600);
+      };
+      var t = setTimeout(done, 6000);   // страховка: не висеть вечно
+      var check = setInterval(function () {
+        if (root && root.childElementCount > 0) {
+          clearInterval(check); clearTimeout(t); done();
+        }
+      }, 80);
+    })();
+  </script>
+
+  <!-- Яндекс.Метрика. Включается сама, если выше указан номер счётчика. -->
+  <script>
+    (function () {
+      var id = window.SG_METRIKA_ID;
+      if (!id) return;   // номер не задан — метрика не грузится
+
+      (function (m, e, t, r, i, k, a) {
+        m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
+        m[i].l = 1 * new Date();
+        k = e.createElement(t); a = e.getElementsByTagName(t)[0];
+        k.async = 1; k.src = r; a.parentNode.insertBefore(k, a);
+      })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+      ym(id, "init", { clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: false });
+
+      // Пиксель для браузеров без JS — подставляется сам, руками ничего вписывать не нужно
+      var ns = document.createElement("noscript");
+      ns.innerHTML = '<div><img src="https://mc.yandex.ru/watch/' + id +
+                     '" style="position:absolute;left:-9999px" alt="" /></div>';
+      document.body.appendChild(ns);
+    })();
+  </script>
+</body>
 </html>

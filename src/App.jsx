@@ -52,8 +52,9 @@ const sgParseJSON = (raw) => {
   if (i >= 0 && j > i) { try { return JSON.parse(s.slice(i, j+1)); } catch(e){} }
   return null;
 };
-/* Ужимаем фото перед отправкой в ИИ: макс. сторона ~1024px, JPEG ~0.82 — чтобы
-   не упираться в лимит тела запроса (~4.5 МБ на Vercel) и чтобы анализ шёл быстрее.
+/* Ужимаем фото перед отправкой в ИИ: макс. сторона ~1280px, JPEG ~0.85 — этого
+   достаточно, чтобы модель РАЗЛИЧАЛА детали на фото (важно для точного анализа),
+   и при этом не упираемся в лимит тела запроса (~4.5 МБ на Vercel).
    При любой осечке возвращаем исходный блок без изменений. */
 async function sgShrinkBlock(block){
   try{
@@ -61,16 +62,71 @@ async function sgShrinkBlock(block){
     if(typeof document==="undefined" || typeof Image==="undefined") return block;
     const mt = block.source.media_type || "image/jpeg";
     const img = await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src="data:"+mt+";base64,"+block.source.data; });
-    const MAX=1024, w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    const MAX=1280, w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
     if(!w || !h) return block;
     if(Math.max(w,h)<=MAX && block.source.data.length<900000) return block; // уже небольшое — не трогаем
     const s=Math.min(1, MAX/Math.max(w,h)), cw=Math.max(1,Math.round(w*s)), chh=Math.max(1,Math.round(h*s));
     const cv=document.createElement("canvas"); cv.width=cw; cv.height=chh;
     cv.getContext("2d").drawImage(img,0,0,cw,chh);
-    const out=(cv.toDataURL("image/jpeg",0.82).split(",")[1])||"";
+    const out=(cv.toDataURL("image/jpeg",0.85).split(",")[1])||"";
     return out ? { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:out } } : block;
   }catch(e){ return block; }
 }
+/* ── Зрение: универсальная отправка фото в ИИ ────────────────────────────────
+   Разные прокси принимают картинки по-разному. Пробуем форматы по очереди:
+     1) Anthropic  — content-блоки {type:"image", source:{type:"base64"}}
+     2) OpenAI     — {type:"image_url", image_url:{url:"data:image/jpeg;base64,…"}}
+   Рабочий формат запоминаем, чтобы в следующий раз начинать сразу с него.
+   Возвращаем { txt, via, reason }. txt="" означает, что фото не дошли. ── */
+const SG_VIA_KEY = "sg_vision_via";
+const sgDataURI = (b)=> "data:"+(b.source.media_type||"image/jpeg")+";base64,"+b.source.data;
+
+async function sgVisionAsk({ sys, shots, task, maxTokens }){
+  const bodies = {
+    anthropic: ()=>({ model:"claude-sonnet-4-6", max_tokens:maxTokens, system:sys,
+      messages:[{ role:"user", content:[
+        ...shots.flatMap((b,i)=>[{ type:"text", text:"Фото "+(i+1)+":" }, b]),
+        { type:"text", text:task },
+      ]}] }),
+    openai: ()=>({ model:"claude-sonnet-4-6", max_tokens:maxTokens,
+      messages:[{ role:"system", content:sys }, { role:"user", content:[
+        ...shots.flatMap((b,i)=>[{ type:"text", text:"Фото "+(i+1)+":" }, { type:"image_url", image_url:{ url:sgDataURI(b) } }]),
+        { type:"text", text:task },
+      ]}] }),
+  };
+  const readTxt = (data)=>{
+    if (Array.isArray(data.content)) return data.content.filter(b=>b&&b.type==="text").map(b=>b.text).join("").trim();
+    const m = data.choices && data.choices[0] && data.choices[0].message;
+    if (m) return typeof m.content==="string" ? m.content.trim()
+      : (Array.isArray(m.content) ? m.content.map(c=>c.text||"").join("").trim() : "");
+    if (typeof data.text==="string") return data.text.trim();
+    return "";
+  };
+  const known = (typeof localStorage!=="undefined" && localStorage.getItem(SG_VIA_KEY)) || "";
+  const order = known && bodies[known] ? [known, ...Object.keys(bodies).filter(k=>k!==known)] : Object.keys(bodies);
+  let reason = "";
+  for (const via of order){
+    try{
+      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(bodies[via]()) });
+      if (!r.ok){ reason = via+": сервер ответил "+r.status+" "+(await r.text().catch(()=>"" )).slice(0,110); continue; }
+      const data = await r.json();
+      const txt = readTxt(data);
+      if (!txt){ reason = via+": пустой ответ от модели"; continue; }
+      try{ localStorage.setItem(SG_VIA_KEY, via); }catch(e){}
+      return { txt, via, reason:"" };
+    }catch(e){ reason = via+": "+String((e&&e.message)||e).slice(0,110); }
+  }
+  return { txt:"", via:"", reason: reason || "ни один формат отправки фото не принят" };
+}
+
+/* Быстрая проверка зрения: показываем модели одну картинку и спрашиваем, что на ней.
+   Если ответ не содержит ожидаемого слова — фото до модели не доходят. */
+async function sgVisionSelfTest(shot){
+  const r = await sgVisionAsk({ sys:"Ты отвечаешь одним словом.", shots:[shot],
+    task:"Ответь одним словом по-русски: что главное изображено на этом фото?", maxTokens:20 });
+  return r;
+}
+
 /* Чистим текст от ИИ: убираем markdown-разметку (** __ # > и маркеры списков), чтобы нигде не торчали «звёздочки» */
 const stripMd = (raw) => {
   if (raw == null) return raw;
@@ -570,6 +626,106 @@ if (typeof window !== "undefined" && !window.__sgInit) {
    Два столбца-мозаика из фото приложения с тёплыми подписями; листается
    бесконечно (карточки генерируются детерминированно от индекса), сердечко
    сохраняет в «Сохранённое». Повод зависнуть — и мягкий путь к анализатору. ── */
+/* ── «Поток»: подпись подбирается ПО САМОЙ ФОТОГРАФИИ ──────────────────────
+   Раньше картинки и подписи брались из двух независимых списков, поэтому под
+   теннисным кортом могло оказаться «расставь книги по цвету». Теперь ключ
+   изображения (tennisServe, croissantButter, peonyTrayBalcony…) определяет тему,
+   а подпись выбирается только из идей этой темы. Фото, не попавшие ни в одну
+   тему (города, обложки), в ленту не идут. ── */
+const SG_FEED_TOPICS = [
+  { re:/tennis|padel|racket|court|balls/i, caps:[
+    "Выйди на корт даже на полчаса — тело помнит больше, чем кажется",
+    "Найди партнёршу и сыграй сет без счёта",
+    "Белая форма, гетры, ракетка — оденься для игры, даже если играешь плохо",
+    "Посмотри чужой матч и обрати внимание не на удары, а на паузы",
+  ]},
+  { re:/run(?!way)|track|pavement/i, caps:[
+    "Пробегись утром до того, как проснётся улица",
+    "Смени маршрут пробежки и посчитай новые детали",
+    "Беги медленно и без часов — просто чтобы дышать",
+    "Выйди на пробежку к воде и остановись, когда захочется",
+  ]},
+  { re:/yoga|pilates|stretch/i, caps:[
+    "Расстели коврик там, где есть свет из окна",
+    "Пятнадцать минут растяжки без музыки и без телефона",
+    "Позанимайся на улице — трава меняет ощущение тела",
+    "Закончи практику лёжа и не вставай ещё минуту",
+  ]},
+  { re:/bike|cycl|surf|paddle|swim|hik|mountain|trail|board/i, caps:[
+    "Возьми велосипед и доедь туда, куда обычно идёшь пешком",
+    "Заплыви чуть дальше, чем вчера, и полежи на воде",
+    "Пройди тропу без цели дойти до конца",
+    "Выйди к воде на рассвете, пока никого нет",
+  ]},
+  { re:/coffee|latte|espresso|freddo|cafe|cappuc/i, caps:[
+    "Сходи в кофейню одна и не бери телефон — только смотри",
+    "Свари кофе дольше обычного и выпей, пока горячий",
+    "Возьми чашку на балкон и не делай больше ничего",
+    "Закажи то, что никогда не берёшь",
+  ]},
+  { re:/croissant|baguette|breakfast|tart|pasta|burrata|panzanella|salad|fig|yogurt|butter|honey|berry|fruit|lemonade|market|teapot|greekTable|picnic|basket/i, caps:[
+    "Съешь завтрак на полу у окна, как в детстве",
+    "Сходи на рынок без списка и купи то, что красиво",
+    "Приготовь ужин по рецепту из страны, где никогда не была",
+    "Накрой стол красиво, даже если ешь одна",
+  ]},
+  { re:/lemon|peony|hydrangea|flower|blossom|bouquet|lavender|wildflower|jasmine|floral|cones/i, caps:[
+    "Купи цветы не в букете, а один стебель — и поставь в бутылку",
+    "Собери букет из того, что растёт у дома",
+    "Поставь цветы туда, где ты их увидишь утром",
+    "Зайди в цветочный без повода и просто постой",
+  ]},
+  { re:/book|read|library|sudoku|puzzle|chess|vinyl|film|cinema|art|paint|easel|marbling|origami|letter|kintsugi|craft|workshop/i, caps:[
+    "Найди в доме вещь старше себя и рассмотри её",
+    "Напиши бумажное письмо тому, кто его не ждёт",
+    "Читай пятнадцать минут стоя у окна, не садясь",
+    "Расставь книги по цвету — всего на один вечер",
+  ]},
+  { re:/sea|beach|pool|boat|sunset|sunrise|ocean|water|calm|wave|coastal|balcony|terrace|window|curtain|light|wall|sand|bark|forest|mist|sky|cloud|dune|pebble/i, caps:[
+    "Посмотри, как свет двигается по стене, и не фотографируй",
+    "Выйди смотреть закат, даже если он обычный",
+    "Открой окно и послушай, что слышно в семь утра",
+    "Посиди у воды столько, сколько захочется",
+  ]},
+  { re:/dress|suit|shirt|linen|silk|slip|pearl|hanger|capsule|sandal|swimsuit|knit|lbd|mirror|bob|trench|tweed|ballerina|dancing/i, caps:[
+    "Надень дома то, что бережёшь для особого случая",
+    "Разбери одну полку и оставь только то, что носишь",
+    "Оденься сегодня для себя, а не для встречи",
+    "Померь то, что давно висит, и реши честно",
+  ]},
+  { re:/perfume|serum|blush|spf|soap|brush|skincare|cream|hairOil|bath|body|neroli|citrus/i, caps:[
+    "Нанеси крем медленно, будто это ритуал, а не задача",
+    "Побрызгай духами подушку, а не себя",
+    "Прими душ без телефона и без спешки",
+    "Найди запах, который возвращает тебя в детство",
+  ]},
+  { re:/laundry|home|ceramic|vase|shelf|plate|nook|living|glass|stillLife|azulejos|plaster|coin|slowGlow/i, caps:[
+    "Переставь одну вещь в комнате и живи так неделю",
+    "Развесь бельё и посмотри, как оно сохнет на ветру",
+    "Вымой одну чашку так, будто она любимая",
+    "Убери с поверхности всё лишнее и оставь один предмет",
+  ]},
+  { re:/airport|plane|travel|suitcase|kit/i, caps:[
+    "Собери сумку так, будто уезжаешь завтра",
+    "Открой карту и найди город, о котором ничего не знаешь",
+    "Съезди на день туда, куда можно доехать за час",
+    "Достань старые билеты и вспомни ту поездку",
+  ]},
+  { re:/breathe|lotus|moonMilk|candle|evening|moon/i, caps:[
+    "Выключи свет и посиди со свечой пятнадцать минут без цели",
+    "Ложись сегодня на час раньше, ничего не досмотрев",
+    "Сделай десять медленных вдохов, считая каждый",
+    "Выпей тёплое молоко перед сном, как в детстве",
+  ]},
+];
+/* Города, чьи названия случайно содержат ключевые слова тем (jakARTa, isleOfSKYe и т.п.) */
+const SG_FEED_SKIP = /^(jakarta|isleOfSkye|petropavlovskkamchatsky|gelendzhik)$/i;
+function sgFeedTopic(key){
+  if (SG_FEED_SKIP.test(key)) return null;
+  for (const t of SG_FEED_TOPICS) if (t.re.test(key)) return t;
+  return null;
+}
+
 function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
   const doyR = sgDoy();
   // Ежедневная ротация: каждый день пул перетасовывается заново — сдвиг + шаг,
@@ -582,10 +738,12 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
     const off = (doyR * (17 + salt) + salt * 5) % n;
     return Array.from({length:n}, (_,i)=> arr[(off + i*step) % n]);
   }, [doyR]);
-  const POOL = React.useMemo(()=> rotate(Object.values(IMG).filter(u=>typeof u==="string"), 1), [rotate]);
-  const CAPS = React.useMemo(()=> rotate([
-    ...FEED_IDEAS, ...DAY_BEAUTY.map(d=>d.v), ...ENVELOPE_IDEAS, ...RITUAL_STEPS,
-  ], 2), [rotate]);
+  // В ленту берём только фотографии, у которых есть своя тема:
+  // так подпись всегда описывает то, что действительно на кадре.
+  const POOL = React.useMemo(()=> rotate(
+    Object.entries(IMG).filter(([k,u])=> typeof u==="string" && !/^mind_/.test(k) && sgFeedTopic(k)),
+    1
+  ), [rotate]);
   const QPOOL = React.useMemo(()=> rotate(QUOTES, 3), [rotate]);
   const QSPOOL = React.useMemo(()=> rotate(ENVELOPE_QS, 4), [rotate]);
   const BGPOOL = React.useMemo(()=> rotate(FEED_BG, 5), [rotate]);
@@ -634,10 +792,13 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
       );
     }
     const special = kind==="day";
-    const url = POOL[(special ? 0 : idx) % POOL.length];
-    const cap = special ? "Пин дня · только сегодня" : CAPS[idx % CAPS.length];
+    const [imgKey, url] = POOL[(special ? 0 : idx) % POOL.length];
+    const topic = sgFeedTopic(imgKey);
+    const cap = special
+      ? "Пин дня · только сегодня"
+      : topic.caps[(idx + doy) % topic.caps.length];   // подпись из темы этого фото
     const h = special ? 236 : 168 + ((idx*37) % 132);
-    const id = "feed_" + (special ? "day_"+doy : (idx % POOL.length) + "_" + (idx % CAPS.length));
+    const id = "feed_" + (special ? "day_"+doy : imgKey + "_" + ((idx + doy) % topic.caps.length));
     const item = { id, kind:"поток", title:cap, t:idx%6, url };
     const isSaved = saved.some(x=>x.id===id);
     return (
@@ -682,7 +843,7 @@ function Fold({ ch, icon, title, sub, defaultOpen=false, children }){
   return (
     <div style={{ borderRadius:16, border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.5)", marginBottom:12, overflow:"hidden" }}>
       <button onClick={()=>setOpen(o=>!o)} className="tapPop" style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"13px 14px", border:"none", background:"transparent", cursor:"pointer", textAlign:"left" }}>
-        <span style={{ width:32, height:32, borderRadius:99, flexShrink:0, background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${ch.partner})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>{icon}</span>
+        <span style={{ width:32, height:32, borderRadius:11, flexShrink:0, background:`linear-gradient(135deg, ${C.butter}, ${ch.partner}B3)`, border:"1px solid rgba(255,255,255,0.6)", display:"flex", alignItems:"center", justifyContent:"center" }}><SGGlyph em={icon} size={17} color="#1A1A1A" sw={1.7}/></span>
         <span style={{ flex:1, minWidth:0 }}>
           <span style={{ display:"block", fontFamily:serif, fontStyle:"italic", fontSize:16.5, color:C.ink, lineHeight:1.12 }}>{title}</span>
           {sub && <span style={{ display:"block", fontSize:11.5, color:C.inkFaint, marginTop:2, lineHeight:1.3 }}>{sub}</span>}
@@ -721,6 +882,112 @@ function SGSun({ color="#C0895E", size=34, style }){
       <line x1="92" y1="38" x2="82" y2="41" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
       <line x1="10" y1="54" x2="90" y2="54" stroke={color} strokeWidth="1.6" strokeLinecap="round" opacity="0.5"/>
     </svg>
+  );
+}
+
+/* ── Фирменные рисованные иконки Slow Glow ───────────────────────────────────
+   Вместо эмодзи: тонкая линия, скруглённые концы — в одном стиле с SGFleur.
+   SGGlyph — сам значок (по имени name или по эмодзи em через карту SG_EMOJI);
+   если эмодзи нет в карте, показываем его как есть, чтобы ничего не пропало.
+   SGBadge — «дизайновая плашка»: маленький градиентный квадрат со значком. */
+const SG_GLYPH = {
+  cup:      "<path d='M5 10h11v4.6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V10Z'/><path d='M16 11h1.6a2.4 2.4 0 0 1 0 4.8H16'/><path d='M8.6 4.6c-.7 1 .7 1.5 0 2.6M12.2 4.6c-.7 1 .7 1.5 0 2.6'/>",
+  book:     "<path d='M12 6.6C10.5 5.1 8 4.6 4.6 4.9v13.6C8 18.2 10.5 18.7 12 20c1.5-1.3 4-1.8 7.4-1.5V4.9C16 4.6 13.5 5.1 12 6.6Z'/><path d='M12 6.6V20'/>",
+  letter:   "<rect x='4' y='6' width='16' height='12' rx='2.4'/><path d='M4.6 7.6 12 13l7.4-5.4'/>",
+  pen:      "<path d='M5 19c.4-2.2.9-3.4 2-4.5L16.2 5.3a1.9 1.9 0 0 1 2.7 2.7L9.7 17.2c-1.1 1.1-2.3 1.6-4.7 1.8Z'/><path d='m14.7 6.9 2.6 2.6'/>",
+  flower:   "<path d='M12 20v-9'/><circle cx='12' cy='6.6' r='2.6'/><path d='M12 15.6c-2.2-.2-3.6-1.3-4.2-3.4 2.2.2 3.6 1.3 4.2 3.4Z'/><path d='M12 13.6c2.2-.2 3.6-1.3 4.2-3.4-2.2.2-3.6 1.3-4.2 3.4Z'/>",
+  leaf:     "<path d='M6 18c0-8 5-12.5 12.5-12.5C18.5 13 14 18 6 18Z'/><path d='M6 18c2.5-4.5 6-8 9.5-9.8'/>",
+  tree:     "<path d='m12 4 4.6 6.6h-2.8l3.8 5.4H6.4l3.8-5.4H7.4L12 4Z'/><path d='M12 16v4'/>",
+  candle:   "<rect x='9.2' y='10.5' width='5.6' height='8.5' rx='1.4'/><path d='M12 8.2c1.4-1.1 1.4-2.5 0-3.8-1.4 1.3-1.4 2.7 0 3.8Z'/><path d='M12 8.4v2.1'/>",
+  music:    "<path d='M9 17.4V6.8l9-2v10.6'/><circle cx='6.8' cy='17.6' r='2.2'/><circle cx='15.8' cy='15.6' r='2.2'/>",
+  sun:      "<circle cx='12' cy='12' r='3.6'/><path d='M12 3.6v2M12 18.4v2M4.6 12h-2M21.4 12h-2M6.3 6.3 4.9 4.9M19.1 19.1l-1.4-1.4M17.7 6.3l1.4-1.4M4.9 19.1l1.4-1.4'/>",
+  sunset:   "<path d='M5.2 15.5a6.8 6.8 0 0 1 13.6 0'/><path d='M3 18.4h18M12 4.6v2.4M5.8 8.1l1.6 1.6M18.2 8.1l-1.6 1.6'/>",
+  moon:     "<path d='M18.4 14.4A7.2 7.2 0 0 1 9.6 5.6a7.2 7.2 0 1 0 8.8 8.8Z'/><path d='m16.4 4.6.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5.5-1.4Z'/>",
+  rain:     "<path d='M7.6 13.4a4.4 4.4 0 1 1 .8-8.7 5 5 0 0 1 9.3 1.6 3.5 3.5 0 0 1-.8 7.1H7.6Z'/><path d='m9 16.4-.9 2.3M13 16.4l-.9 2.3M17 16.4l-.9 2.3'/>",
+  wind:     "<path d='M4 9h9.4a2.4 2.4 0 1 0-2.3-3M4 13h13.4a2.6 2.6 0 1 1-2.5 3.2M4 17h6'/>",
+  wave:     "<path d='M3 9.5c2 0 2.6-1.6 4.5-1.6S10 9.5 12 9.5s2.6-1.6 4.5-1.6S19 9.5 21 9.5'/><path d='M3 14.5c2 0 2.6-1.6 4.5-1.6s2.5 1.6 4.5 1.6 2.6-1.6 4.5-1.6 2.5 1.6 4.5 1.6'/>",
+  bath:     "<path d='M4 12.4h16v2.2a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-2.2Z'/><path d='M6 12.4V7a2.3 2.3 0 0 1 4.5-.7'/><path d='m7 18.8-.9 1.4M17 18.8l.9 1.4'/>",
+  lemon:    "<path d='M6.6 16.6c-2-2-1.7-5.9 1-8.6s6.6-3 8.6-1 1.7 5.9-1 8.6-6.6 3-8.6 1Z'/><path d='M16.4 6.8 18 5.2'/>",
+  jar:      "<rect x='8.6' y='4.6' width='6.8' height='2.8' rx='1'/><path d='M9 7.4C7.4 8.8 6.6 10.4 6.6 12.8c0 3.8 2.2 6.2 5.4 6.2s5.4-2.4 5.4-6.2c0-2.4-.8-4-2.4-5.4'/>",
+  croissant:"<path d='M9.8 15.8c-1.3-2.6-1.3-5.2 0-7.4 1.3-1.6 3.1-1.6 4.4 0 1.3 2.2 1.3 4.8 0 7.4-1.3 1.5-3.1 1.5-4.4 0Z'/><path d='M8.4 8C6 9.4 4.6 11.7 4.6 14c0 1.6 1 2.6 2.6 2.6.9 0 1.8-.3 2.7-.8M15.6 8C18 9.4 19.4 11.7 19.4 14c0 1.6-1 2.6-2.6 2.6-.9 0-1.8-.3-2.7-.8'/>",
+  plate:    "<circle cx='12' cy='12' r='7.4'/><circle cx='12' cy='12' r='3.4'/>",
+  film:     "<rect x='4' y='5.6' width='16' height='12.8' rx='2'/><path d='M8 5.6v12.8M16 5.6v12.8M4 9.4h4M4 14.6h4M16 9.4h4M16 14.6h4'/>",
+  camera:   "<rect x='4' y='7.6' width='16' height='10.8' rx='2.4'/><path d='M9 7.6 10.4 5.2h3.2L15 7.6'/><circle cx='12' cy='12.8' r='2.9'/>",
+  frame:    "<rect x='5' y='4.6' width='14' height='14.8' rx='1.4'/><rect x='7.6' y='7.2' width='8.8' height='9.6' rx='.8'/><path d='m9 14.4 2.2-2.6 1.6 1.7 1.5-1.8 1.7 2.7'/>",
+  palette:  "<path d='M12 4a8 8 0 1 0 0 16c1.3 0 1.9-.8 1.6-1.8-.4-1.3.3-2.2 1.7-2.2h1.9c1.7 0 2.8-1.2 2.8-3C20 8 16.4 4 12 4Z'/><circle cx='8.3' cy='9.2' r='1'/><circle cx='12' cy='7.4' r='1'/><circle cx='15.7' cy='9.2' r='1'/>",
+  basket:   "<path d='M4.6 10h14.8l-1.5 7.8a2 2 0 0 1-2 1.6H8.1a2 2 0 0 1-2-1.6L4.6 10Z'/><path d='M9 10c0-3 1.2-4.9 3-4.9s3 1.9 3 4.9'/>",
+  box:      "<path d='M4.6 8 12 4.6 19.4 8v8L12 19.4 4.6 16V8Z'/><path d='M4.6 8 12 11.4 19.4 8M12 11.4v8'/>",
+  heart:    "<path d='M12 19.4c-4.4-3-7.4-5.7-7.4-8.9A4 4 0 0 1 12 8a4 4 0 0 1 7.4 2.5c0 3.2-3 5.9-7.4 8.9Z'/>",
+  lotus:    "<path d='M12 18c-1.8-1.4-2.7-3.3-2.7-5.5 0-2 1-4.1 2.7-5.7 1.7 1.6 2.7 3.7 2.7 5.7 0 2.2-.9 4.1-2.7 5.5Z'/><path d='M12 18c-3 .5-5.5-.3-7.4-2.3 2.3-1 4.4-1 6.3 0M12 18c3 .5 5.5-.3 7.4-2.3-2.3-1-4.4-1-6.3 0'/>",
+  dress:    "<path d='M9 4.6c.4 1.7 1.4 2.6 3 2.6s2.6-.9 3-2.6'/><path d='M9.8 7.4 9 10.4l-3.1 7c2 1.2 4 1.8 6.1 1.8s4.1-.6 6.1-1.8l-3.1-7-.8-3'/>",
+  mirror:   "<ellipse cx='12' cy='9.8' rx='5.2' ry='6.6'/><path d='M12 16.6V20M9.2 20h5.6'/><path d='M9.6 7.4c.6-1.2 1.5-1.9 2.6-2.1'/>",
+  broom:    "<path d='m14.6 4.4 5 5'/><path d='M13.8 10.4 4.8 19.4c2.7 1 5 .6 7.1-1.5l2-2'/><path d='m13 9.2 1.8 1.8c1.2-.4 2-1.2 2.4-2.4l-1.8-1.8c-1.2.4-2 1.2-2.4 2.4Z'/>",
+  clock:    "<circle cx='12' cy='12' r='7.4'/><path d='M12 7.6V12l3 2'/>",
+  bike:     "<circle cx='6.6' cy='15.4' r='3.4'/><circle cx='17.4' cy='15.4' r='3.4'/><path d='M6.6 15.4 10 8.2h5.4M17.4 15.4 14 8.2M10 8.2H8.2'/>",
+  gift:     "<rect x='4.6' y='9' width='14.8' height='10' rx='1.4'/><path d='M12 9v10M4.6 12.6h14.8'/><path d='M12 9C9.2 9 7.6 8 7.6 6.6S9.8 4.2 12 6.4c2.2-2.2 4.4-1.3 4.4.2S14.8 9 12 9Z'/>",
+  tower:    "<path d='M12 4.4 8.6 19M12 4.4 15.4 19'/><path d='M10 11h4M9.2 15.4h5.6'/><path d='M6.6 19h10.8'/><path d='M9.6 19c.7-2 4.1-2 4.8 0'/>",
+  home:     "<path d='M4.6 11 12 4.6 19.4 11'/><path d='M6.6 10v9h10.8v-9'/><path d='M10 19v-4.6h4V19'/>",
+  sparkle:  "<path d='M12 3.6c.6 3.6 2.9 5.8 6.4 6.4-3.5.6-5.8 2.9-6.4 6.4-.6-3.5-2.9-5.8-6.4-6.4 3.5-.6 5.8-2.8 6.4-6.4Z'/><circle cx='18.2' cy='17.4' r='1.1'/>",
+  walk:     "<path d='M5 19c3.4-1 5.4-3 6.9-6.9S15.6 5.6 19 4.6'/><path d='M16.4 4.6H19v2.6'/>",
+  plane:    "<path d='M4 13.4 20 6l-4.4 12.8-3.4-5L4 13.4Z'/><path d='M12.2 13.8 20 6'/>",
+  racket:   "<ellipse cx='14.4' cy='8.6' rx='4.6' ry='5.6' transform='rotate(35 14.4 8.6)'/><path d='M11 13 5.6 18.4'/><path d='m12.4 6.6 4 4M15.4 5.6l2.8 2.8M11.2 9.2l4.4 4.4'/><circle cx='6.6' cy='8.2' r='1.5'/>",
+  paw:      "<circle cx='8.2' cy='8.2' r='1.5'/><circle cx='12' cy='6.9' r='1.5'/><circle cx='15.8' cy='8.2' r='1.5'/><path d='M12 11.2c2.6 0 4.5 1.7 4.5 3.8 0 1.5-1.1 2.5-2.5 2.5-.8 0-1.4-.3-2-.3s-1.2.3-2 .3c-1.4 0-2.5-1-2.5-2.5 0-2.1 1.9-3.8 4.5-3.8Z'/>",
+  hanger:   "<path d='M12 7.6a2 2 0 1 1 2-2'/><path d='M12 7.6 3.9 13.6a1.4 1.4 0 0 0 .8 2.5h14.6a1.4 1.4 0 0 0 .8-2.5L12 7.6Z'/>",
+  mappin:   "<path d='M12 20.4c4-4.2 6-7.3 6-9.9a6 6 0 1 0-12 0c0 2.6 2 5.7 6 9.9Z'/><circle cx='12' cy='10.4' r='2.1'/>",
+  fire:     "<path d='M12 19.6c-3.2 0-5.4-2-5.4-5 0-2.3 1.3-4.2 2.6-5.6-.1 1.4.4 2.3 1.5 2.7-.4-2.9.7-5.5 3.2-7.5-.3 2.2.5 3.5 1.9 5 1.2 1.3 2.5 2.9 2.5 5.4 0 3-2.1 5-6.3 5Z'/>",
+  chart:    "<path d='M4.6 4.6v14.8h14.8'/><path d='m7.6 15 3.4-4 2.4 2.4L18 8.2'/><path d='M15.6 8.2H18v2.4'/>",
+  backpack: "<rect x='6' y='8' width='12' height='11.4' rx='3'/><path d='M9 8V6.8a3 3 0 0 1 6 0V8'/><path d='M6 13.4h12'/><path d='M10 13.4V16h4v-2.6'/>",
+};
+const SG_EMOJI = {
+  "\u2615":"cup","\ud83c\udf75":"cup","\ud83e\uded6":"cup",
+  "\ud83d\udcd6":"book","\ud83d\udcda":"book",
+  "\u2709\ufe0f":"letter","\ud83d\udc8c":"letter",
+  "\u270d\ufe0f":"pen","\ud83d\udcdd":"pen","\ud83d\udd8a":"pen",
+  "\ud83d\uddd3":"clock","\ud83d\udd70":"clock",
+  "\ud83d\udc90":"flower","\ud83c\udf38":"flower","\ud83c\udf3c":"flower",
+  "\ud83c\udf3f":"leaf","\ud83e\uded2":"leaf",
+  "\ud83c\udf33":"tree","\ud83c\udfde":"tree",
+  "\ud83d\udd6f":"candle",
+  "\ud83c\udfb6":"music","\ud83c\udfa7":"music","\ud83d\udcbf":"music","\ud83d\udcfb":"music","\ud83c\udfb5":"music","\ud83d\udc83":"music","\ud83e\ude70":"music",
+  "\ud83c\udf05":"sunset","\ud83c\udf07":"sunset",
+  "\ud83c\udf19":"moon","\ud83c\udf03":"moon",
+  "\ud83c\udf27":"rain","\ud83c\udf2c":"wind","\ud83c\udf0a":"wave",
+  "\ud83d\udec1":"bath","\ud83e\udee7":"bath","\ud83e\uddf4":"bath",
+  "\ud83c\udf4b":"lemon","\ud83c\udf4a":"lemon","\ud83c\udf53":"lemon",
+  "\ud83c\udf6f":"jar",
+  "\ud83e\udd50":"croissant","\ud83c\udf5e":"croissant","\ud83c\udf70":"croissant","\ud83c\udf6b":"croissant",
+  "\ud83c\udf5c":"plate","\ud83e\udd57":"plate","\ud83c\udf7d":"plate",
+  "\ud83c\udf9e":"film","\ud83d\udcf7":"camera","\ud83d\udcf8":"camera",
+  "\ud83d\uddbc":"frame","\ud83c\udfdb":"frame","\ud83c\udfa8":"palette",
+  "\ud83e\uddfa":"basket","\ud83e\uddf5":"basket","\ud83d\uded2":"basket",
+  "\ud83d\udce6":"box",
+  "\ud83e\udd0d":"heart","\ud83e\udde1":"heart","\ud83d\udc75":"heart",
+  "\ud83e\uddd8\u200d\u2640\ufe0f":"lotus","\ud83e\uddd8":"lotus","\ud83e\ude77":"lotus",
+  "\ud83d\udc57":"dress","\ud83e\udde3":"dress","\ud83e\udde6":"dress",
+  "\ud83d\udc84":"mirror","\ud83e\ude9e":"mirror",
+  "\ud83e\uddf9":"broom",
+  "\ud83d\udeb2":"bike","\ud83d\udeb4\u200d\u2640\ufe0f":"bike","\ud83d\udeb4":"bike",
+  "\ud83c\udf81":"gift","\ud83d\uddfc":"tower",
+  "\ud83c\udfe0":"home","\ud83d\udeaa":"home",
+  "\ud83e\uddca":"sparkle","\u2728":"sparkle","\u2726":"sparkle",
+  "\ud83d\udeb6\u200d\u2640\ufe0f":"walk","\ud83d\udeb6":"walk","\ud83d\udc5f":"walk","\ud83c\udfc3\u200d\u2640\ufe0f":"walk","\ud83c\udfc3":"walk","\ud83e\udd7e":"walk",
+  "\ud83c\udfbe":"racket","\ud83c\udff8":"racket","\ud83c\udfd3":"racket",
+  "\ud83c\udfca\u200d\u2640\ufe0f":"wave","\ud83c\udfca":"wave","\ud83c\udfc4\u200d\u2640\ufe0f":"wave","\ud83c\udfc4":"wave",
+  "\ud83c\udfcb\ufe0f\u200d\u2640\ufe0f":"fire","\ud83e\udd4a":"fire","\ud83d\udd25":"fire","\ud83e\uddd7\u200d\u2640\ufe0f":"fire",
+  "\ud83d\udcc8":"chart","\ud83c\udf92":"backpack",
+};
+function SGGlyph({ name, em, size=20, color="#1A1A1A", sw=1.6, style }){
+  const raw = em ? String(em).trim() : "";
+  const key = name || SG_EMOJI[raw] || SG_EMOJI[raw.replace(/\uFE0F/g,"")] || SG_EMOJI[raw+"\uFE0F"] || null;
+  const d = key ? SG_GLYPH[key] : null;
+  if (!d) return em ? <span style={{ fontSize:Math.round(size*0.9), lineHeight:1, ...style }}>{em}</span> : null;
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style} dangerouslySetInnerHTML={{ __html: d }}/>;
+}
+function SGBadge({ em, name, partner=C.coral, size=32, style }){
+  return (
+    <span style={{ width:size, height:size, borderRadius:Math.round(size*0.32), flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", background:`linear-gradient(135deg, ${C.butter}, ${partner}B3 88%)`, border:"1px solid rgba(255,255,255,0.6)", boxShadow:`0 8px 16px -10px ${partner}`, ...style }}>
+      <SGGlyph em={em} name={name} size={Math.round(size*0.58)} color="#1A1A1A" sw={1.7}/>
+    </span>
   );
 }
 
@@ -866,15 +1133,15 @@ function DailyEnvelope({ ch, bump }){
 function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel, openLang, openSport, openPets, openMind, openScan, openPin }){
   const tint = [ `${C.sage}66`, `${C.butter}55`, `${C.seaMist}66`, `${C.sand}88` ];
   const T = [
-    { k:"Карта и досуг", d:"Эстетичные места рядом", go:onPlaces, img:IMG.parisCafe },
-    { k:"Коллекции", d:"Капсулы красивой жизни", go:onCollections, img:IMG.capsuleHangers },
-    { k:"Стилист", d:"Образы из твоих вещей", go:openStylist, img:IMG.mirrorDress, plus:true },
-    { k:"Путешествия", d:"Куда поехать под эстетику", go:openTravel, img:IMG.planeWingSunset, plus:true },
-    { k:"Языки", d:"Красивые уроки каждый день", go:openLang, img:IMG.letters },
-    { k:"Спорт", d:"Мягкое движение и корты", go:openSport, img:IMG.pilatesPark },
-    { k:"Рецепты", d:"Ужин из того, что есть", go:openScan, img:IMG.lemonPasta, plus:true },
-    { k:"Идеи для ума", d:"Обогащение · тема дня", go:openMind, img:IMG.homeLibraryNook },
-    { k:"Питомцы", d:"Забота и прогулки", go:openPets, img:IMG.villageWalk },
+    { k:"Карта и досуг", d:"Эстетичные места рядом", go:onPlaces, g:"mappin" },
+    { k:"Коллекции", d:"Капсулы красивой жизни", go:onCollections, g:"box" },
+    { k:"Стилист", d:"Образы из твоих вещей", go:openStylist, g:"hanger", plus:true },
+    { k:"Путешествия", d:"Куда поехать под эстетику", go:openTravel, g:"plane", plus:true },
+    { k:"Языки", d:"Красивые уроки каждый день", go:openLang, g:"letter" },
+    { k:"Спорт", d:"Мягкое движение и корты", go:openSport, g:"racket" },
+    { k:"Рецепты", d:"Ужин из того, что есть", go:openScan, g:"plate", plus:true },
+    { k:"Идеи для ума", d:"Обогащение · тема дня", go:openMind, g:"book" },
+    { k:"Питомцы", d:"Забота и прогулки", go:openPets, g:"paw" },
   ];
   return (
     <div>
@@ -892,14 +1159,13 @@ function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel,
       </button>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, paddingBottom:8 }}>
         {T.map((t,i)=>(
-          <button key={t.k} onClick={t.go} className={"fade st"+((i%6)+1)} style={{ position:"relative", textAlign:"left", border:"none", cursor:"pointer", borderRadius:18, overflow:"hidden", padding:0, minHeight:118, background:tint[i%tint.length] }}>
-            <Photo t={i%6} url={t.img} h={118} radius={0}>
-              <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(26,26,26,0.04) 30%, rgba(26,26,26,0.6) 100%)" }}/>
-            </Photo>
-            {t.plus && !premium && <span style={{ position:"absolute", top:9, right:9, fontFamily:head, fontSize:8.5, letterSpacing:"0.12em", background:"rgba(250,248,241,0.92)", borderRadius:99, padding:"3px 7px", color:C.ink }}>✦ PLUS</span>}
+          <button key={t.k} onClick={t.go} className={"fade st"+((i%6)+1)} style={{ position:"relative", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:18, overflow:"hidden", padding:0, minHeight:118, background:`linear-gradient(150deg, ${tint[i%tint.length]}, rgba(255,255,255,0.8) 58%, ${ch.partner}26)` }}>
+            <div aria-hidden="true" style={{ position:"absolute", right:-22, top:-24, width:84, height:84, borderRadius:99, background:"rgba(255,255,255,0.45)" }}/>
+            <div style={{ position:"absolute", left:12, top:11 }}><SGBadge name={t.g} partner={ch.partner} size={34}/></div>
+            {t.plus && !premium && <span style={{ position:"absolute", top:9, right:9, fontFamily:head, fontSize:8.5, letterSpacing:"0.12em", background:"rgba(255,255,255,0.85)", border:`1px solid ${C.line}`, borderRadius:99, padding:"3px 7px", color:C.ink }}>✦ PLUS</span>}
             <div style={{ position:"absolute", left:12, right:12, bottom:10 }}>
-              <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:"#fff", lineHeight:1.1, textShadow:"0 1px 8px rgba(26,26,26,0.6)" }}>{t.k}</div>
-              <div style={{ fontSize:11, color:"rgba(255,255,255,0.88)", marginTop:2.5, lineHeight:1.3, textShadow:"0 1px 6px rgba(26,26,26,0.55)" }}>{t.d}</div>
+              <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, lineHeight:1.1 }}>{t.k}</div>
+              <div style={{ fontSize:11, color:C.inkSoft, marginTop:2.5, lineHeight:1.3 }}>{t.d}</div>
             </div>
           </button>
         ))}
@@ -942,9 +1208,10 @@ function DailyRitual({ ch, onLive }){
   return (
     <div style={{ borderRadius:20, overflow:"hidden", border:`1px solid ${C.line}`, marginBottom:18, boxShadow:`0 16px 36px -30px ${ch.partner}` }}>
       <div style={{ position:"relative" }}>
-        <Photo t={2} url={IMG.goldenCurtainLight} h={82} radius={0}>
-          <div style={{ position:"absolute", inset:0, background:`linear-gradient(110deg, ${C.butter}E6, ${ch.partner}CC 78%)` }}/>
-        </Photo>
+        <div style={{ height:82, position:"relative", overflow:"hidden", background:`linear-gradient(110deg, ${C.butter}, ${ch.partner}D9 78%)` }}>
+          <div aria-hidden="true" style={{ position:"absolute", right:-26, top:-32, width:120, height:120, borderRadius:99, background:"rgba(255,255,255,0.3)" }}/>
+          <div aria-hidden="true" style={{ position:"absolute", right:14, bottom:4, opacity:0.8 }}><SGSun color="#1A1A1A" size={40}/></div>
+        </div>
       <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", gap:13, padding:"14px 16px" }}>
         <div style={{ width:50, height:50, borderRadius:99, flexShrink:0, background:`conic-gradient(#1A1A1A ${ringDeg}deg, rgba(255,255,255,0.5) 0)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ width:40, height:40, borderRadius:99, background:C.cream, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:serif, fontStyle:"italic", fontSize:20 }}>{st.streak}</div>
@@ -1374,8 +1641,8 @@ function SlowGlowAppMain() {
       try {
         const content = imgs.map(b=>{ const m=(b.url.match(/^data:(.*?);base64,/)||[])[1]||"image/jpeg"; return { type:"image", source:{ type:"base64", media_type:m, data:b.url.split(",")[1] } }; });
         for(let _i=0;_i<content.length;_i++){ content[_i]=await sgShrinkBlock(content[_i]); }
-        content.push({ type:"text", text:'Это мудборд мечты пользовательницы — фото эстетики жизни, к которой она стремится. Разбери их вместе и верни ТОЛЬКО JSON без markdown по-русски: {"themes":[3-5 коротких повторяющихся тем или паттернов её эстетики, например «свежие цветы», «медленные завтраки у окна», «лён и нейтральная палитра»],"steps":[16 разных маленьких конкретных шагов на каждый день, которые приближают её реальную жизнь к этим образам — по одному тёплому действию, начинай с глагола, без токсичной продуктивности и без нумерации]}.' });
-        const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000, system:"Ты — Slow Glow. Разбираешь визуальную эстетику по фото и превращаешь её в маленькие тёплые шаги для реальной жизни.", messages:[{ role:"user", content }] }) });
+        content.push({ type:"text", text:'Это мудборд мечты пользовательницы — фото эстетики жизни, к которой она стремится. ВАЖНО: опирайся только на то, что РЕАЛЬНО видно на этих фото; не добавляй типовых «красивых» деталей (свечи, книги, цветы, кофе), если их нет на снимках. Разбери фото вместе и верни ТОЛЬКО JSON без markdown по-русски: {"themes":[3-5 коротких повторяющихся тем или паттернов её эстетики, например «свежие цветы», «медленные завтраки у окна», «лён и нейтральная палитра»],"steps":[16 разных маленьких конкретных шагов на каждый день, которые приближают её реальную жизнь к этим образам — по одному тёплому действию, начинай с глагола, без токсичной продуктивности и без нумерации]}.' });
+        const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000, system:"Ты — Slow Glow. Разбираешь визуальную эстетику по фото и превращаешь её в маленькие тёплые шаги для реальной жизни. Ты никогда не приписываешь фото того, чего на них нет: сначала внимательно смотришь, что реально изображено, и строишь ответ только на этом.", messages:[{ role:"user", content }] }) });
         const d = await r.json();
         const raw = (d.content||[]).filter(x=>x.type==="text").map(x=>x.text).join("");
         const obj = sgParseJSON(raw);
@@ -1935,7 +2202,8 @@ function BeautifulDay({ ch }) {
   const dstr = new Date().toLocaleDateString("ru-RU",{ day:"numeric", month:"long" });
   return (
     <div style={{ position:"relative", margin:"0 0 22px", borderRadius:22, overflow:"hidden", border:`1px solid ${ch.partner}`, background:`linear-gradient(165deg, ${ch.partner}26, rgba(255,255,255,0.65) 62%)` }}>
-      <div aria-hidden="true" style={{ position:"absolute", right:-12, top:-12, width:132, height:132, opacity:0.42, maskImage:"linear-gradient(120deg, transparent 32%, #000)", WebkitMaskImage:"linear-gradient(120deg, transparent 32%, #000)" }}><Photo t={4} url={IMG.bouquetTable} h={150} radius={0}/></div>
+      <div aria-hidden="true" style={{ position:"absolute", right:-36, top:-36, width:150, height:150, borderRadius:99, background:`radial-gradient(circle at 35% 35%, ${C.butter}, ${ch.partner}59 58%, transparent 74%)`, filter:"blur(2px)" }}/>
+      <div aria-hidden="true" style={{ position:"absolute", right:12, top:38, opacity:0.55 }}><SGFleur color={ch.partner} size={50}/></div>
       {burst && <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:3 }}>{Array.from({length:12}).map((_,k)=>{ const cols=[ch.partner, C.sage, C.butter, "#F2B6C6"]; return <span key={k} className="petal" style={{ left:((6+k*8)%92)+"%", background:cols[k%4], animationDelay:(k*0.15)+"s", animationDuration:(2.3+(k%5)*0.32)+"s" }}/>; })}</div>}
       <div style={{ padding:"17px 18px 4px" }}>
         <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:8 }}>
@@ -1951,7 +2219,7 @@ function BeautifulDay({ ch }) {
           return (
             <button key={i} onClick={()=>toggle(i)} className={"tapPop fade st"+((i%6)+1)} style={{ width:"100%", display:"flex", alignItems:"center", gap:12, padding:"11px 10px", border:"none", borderBottom:i<items.length-1?`1px solid ${C.line}`:"none", background:"transparent", cursor:"pointer", textAlign:"left" }}>
               <span style={{ flexShrink:0, width:26, height:26, borderRadius:99, display:"flex", alignItems:"center", justifyContent:"center", border:on?"none":`1.6px solid ${ch.partner}`, background:on?ch.partner:"transparent", transition:"all .15s" }}>{on && <Check size={15} strokeWidth={2.6} color={C.cream}/>}</span>
-              <span style={{ flexShrink:0, fontSize:18, opacity:on?0.5:1 }}>{it.e}</span>
+              <span style={{ flexShrink:0, opacity:on?0.45:1, transition:"opacity .15s" }}><SGBadge em={it.e} partner={ch.partner} size={34}/></span>
               <span style={{ flex:1, fontSize:14.5, lineHeight:1.4, color:on?C.inkFaint:C.ink, textDecoration:on?"line-through":"none" }}>{it.v}</span>
             </button>
           );
@@ -2058,18 +2326,15 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
       ); })()}
       <DailyEnvelope ch={ch} bump={bump}/>
 
-      <button onClick={openFeed} className="tapPop" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:18, overflow:"hidden", padding:0, marginBottom:14, position:"relative", background:"#fff" }}>
-        <div style={{ display:"flex" }}>
-          {[IMG.parisCafe, IMG.capsuleHangers, IMG.lemonPasta].map((u,i)=>(
-            <div key={i} style={{ flex:1 }}><Photo t={i+1} url={u} h={74} radius={0}/></div>
-          ))}
-        </div>
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(90deg, rgba(26,26,26,0.55), rgba(26,26,26,0.15))", display:"flex", alignItems:"center", padding:"0 15px", gap:11 }}>
+      <button onClick={openFeed} className="tapPop" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:18, overflow:"hidden", padding:0, marginBottom:14, position:"relative", background:`linear-gradient(115deg, ${C.seaMist}66, ${ch.partner}4D 55%, ${C.butter})` }}>
+        <div aria-hidden="true" style={{ position:"absolute", right:-22, top:-26, width:100, height:100, borderRadius:99, background:"rgba(255,255,255,0.32)" }}/>
+        <div style={{ position:"relative", display:"flex", alignItems:"center", padding:"13px 15px", gap:12 }}>
+          <SGBadge name="wave" partner={ch.partner} size={40}/>
           <div style={{ flex:1 }}>
-            <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(255,255,255,0.85)" }}>Поток вдохновения</div>
-            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:"#fff", marginTop:2 }}>Полистать красивое ✦</div>
+            <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(26,26,26,0.55)" }}>Поток вдохновения</div>
+            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:17, color:C.ink, marginTop:2 }}>Полистать красивое ✦</div>
           </div>
-          <ArrowRight size={17} strokeWidth={1.8} color="#fff"/>
+          <ArrowRight size={17} strokeWidth={1.8} color="#1A1A1A"/>
         </div>
       </button>
       {earlyAccess && (
@@ -2100,9 +2365,8 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
       <PullQuote>{pickOne(QUOTES, 5)}</PullQuote>
 
       <div className="anim-grad" style={{ position:"relative", borderRadius:20, overflow:"hidden", marginBottom:22, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 65%, ${C.oat})`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
-        <div style={{ position:"absolute", right:-8, top:-8, width:120, height:"120%", opacity:0.5, maskImage:"linear-gradient(90deg, transparent, #000 45%)", WebkitMaskImage:"linear-gradient(90deg, transparent, #000 45%)" }}>
-          <Photo t={1} url={IMG.linenSit} h={200} radius={0}/>
-        </div>
+        <div aria-hidden="true" style={{ position:"absolute", right:-28, top:-32, width:130, height:130, borderRadius:99, background:"rgba(255,255,255,0.3)" }}/>
+        <div aria-hidden="true" style={{ position:"absolute", right:12, bottom:8, opacity:0.5 }}><SGFleur color="#1A1A1A" size={50}/></div>
         <div style={{ position:"relative", padding:"18px 20px" }}>
           <Label color="rgba(26,26,26,0.5)">Кем ты становишься</Label>
           <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:20, lineHeight:1.35, color:C.ink, margin:"8px 0 0" }}>Ты создаёшь жизнь {identity}.</p>
@@ -2225,7 +2489,7 @@ function NearbyMap({ city, partner }) {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         {NEARBY_CATS.map(cat=>(
           <a key={cat.label} href={url(cat.term)} target="_blank" rel="noopener noreferrer" className="pop" style={{ display:"flex", alignItems:"center", gap:11, padding:"14px 14px", borderRadius:16, border:`1px solid ${C.line}`, background:`linear-gradient(150deg, ${partner}1f, rgba(255,255,255,0.72))`, textDecoration:"none", color:C.ink }}>
-            <span style={{ fontSize:22, flexShrink:0 }}>{cat.e}</span>
+            <SGBadge em={cat.e} partner={partner} size={34}/>
             <span style={{ fontFamily:head, fontSize:14, fontWeight:500, lineHeight:1.2 }}>{cat.label}</span>
           </a>
         ))}
@@ -3471,7 +3735,8 @@ function PinReality({ ch, dna, onClose }) {
   const [imgs, setImgs] = useState([]);
   const [ai, setAi] = useState(()=> sgStore.get("sg_dream_full", null)); // прошлый разбор живёт между сессиями
   const [busy, setBusy] = useState(false);
-  const BUSY_STEPS = ["Смотрю на свет и цвета твоих пинов…","Собираю палитру и настроение…","Ищу твоего эстетического двойника…","Подбираю точные шаги и ритуалы…","Дописываю тёплое письмо тебе…"];
+  const [err, setErr] = useState(null); // честная ошибка вместо «выдуманного» разбора
+  const BUSY_STEPS = ["Рассматриваю каждое фото по отдельности…","Записываю, что буквально на кадрах…","Собираю палитру и настроение…","Ищу твоего эстетического двойника…","Подбираю точные шаги и ритуалы…","Дописываю тёплое письмо тебе…"];
   const [bstep, setBstep] = useState(0);
   useEffect(()=>{ if(!busy) return; setBstep(0); const t=setInterval(()=>setBstep(b=>(b+1)%BUSY_STEPS.length), 2200); return ()=>clearInterval(t); },[busy]);
   const [bought, setBought] = useState(()=> sgStore.get("sg_bought", {}));
@@ -3496,18 +3761,55 @@ function PinReality({ ch, dna, onClose }) {
     const arr = await Promise.all(files.map(read));
     setImgs(p=>[...p,...arr].slice(0,8));
   };
+  /* ── Разбор пинов с «заземлением»: каждое фото подписано номером, модель
+     ОБЯЗАНА сначала буквально описать каждый кадр (поле "seen") и строить весь
+     разбор только на этом. Если ИИ недоступен или ответ невалиден — честно
+     показываем ошибку и НИКОГДА не выдаём шаблонный разбор за настоящий. ── */
   const analyze = async () => {
-    if (!imgs.length || busy) return; setBusy(true);
+    if (!imgs.length || busy) return; setBusy(true); setErr(null);
+    const sys = "Ты — Slow Glow: тёплый голос о медленной красивой жизни и предельно внимательный визуальный аналитик. ЖЕЛЕЗНОЕ ПРАВИЛО №1: ты описываешь и анализируешь ТОЛЬКО то, что реально изображено на присланных фото. Сначала рассматриваешь каждый кадр по отдельности и честно фиксируешь его буквальное содержимое: место, предметы, людей, действие, свет, цвета. Ты НИКОГДА не додумываешь типовые «эстетичные» детали — свечи, книги, цветы, кофе, лён, дерево — если их нет на фото. Если на фото спорт (теннис, корт, ракетки), путешествия, город, еда, животные или что-то неожиданное — весь разбор строится именно вокруг этого, а не вокруг абстрактной «медленной жизни». По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи и ритуалы, без воды и абстракций. Покупки советуешь только для дома и интерьера; одежду покупать не советуешь никогда — только собирать образы из её гардероба. Никогда не называешь бренды, марки и магазины — вещи описываешь по типу, цвету и материалу; на актуальные тренды ссылаться можно, но без имён брендов. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».";
+    const task = 'Это мои сохранённые картинки (пины) желаемой эстетики жизни, каждая подписана номером. ШАГ 1 — рассмотри КАЖДОЕ фото по отдельности и для каждого честно зафиксируй, что на нём буквально изображено (место, предметы, люди, действие, цвета). ШАГ 2 — построй разбор СТРОГО на этих наблюдениях: каждый вывод должен опираться на конкретные фото, ничего не выдумывай. Если фото разнородные (например, спорт + интерьер + путешествия) — отрази ВСЕ темы, не сводя всё к одной. Верни ТОЛЬКО валидный JSON без markdown, по-русски: {"seen":[по одной строке на КАЖДОЕ фото в исходном порядке, формат «Фото N: что буквально изображено», коротко и без домыслов],"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни минимум три детали ПРЯМО с картинок (то, что ты записала в seen)","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника, отражающее именно ЕЁ фото (если на фото спорт — двойник спортивный, если море — морской), максимум 3-4 слова: например «Уимблдонское утро», «Тосканский полдень», «Парижское утро 70-х»","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[до 6 конкретных повторяющихся образов, объектов или цветов; КАЖДЫЙ обязан реально присутствовать хотя бы на одном фото из seen — не добавляй ни одного, которого нет на кадрах; если фото мало, верни меньше пунктов],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий, выведенных ИЗ ЭТИХ фото — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например, если на фото теннис: «Забронируй корт на час в субботу утром и возьми с собой воду и полотенце»); никаких общих фраз и ничего, что не связано с фото],"identity":{"who":"3-4 предложения — какая это личность по её фото: её характер, ритм, отношение к себе; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, подобранных под темы ЕЁ фото, каждая с указанием времени],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"outfits":[3 готовых образа под её эстетику С ФОТО, собранных из базовых вещей её вероятного гардероба — каждый одним предложением: типы вещей, цвета, материалы; БЕЗ единого названия бренда],"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эстетику её фото (если на фото спорт — например, красивое хранение инвентаря, корзина для формы); каждая с материалом или цветом; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов под темы её фото, каждый одной строкой в формате «Название — суть»],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни, судя по фото],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня, связанный с тем, что на фото","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках РЕАЛЬНО видно что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути; если совпадений нет — строго null, не притягивай"') : "null")+'}. САМОПРОВЕРКА перед ответом: пройдись по каждому пункту patterns и read — если чего-то нет в seen, убери или замени. Пиши предметно. Тон тёплый и личный, во втором лице. Без оценок, без слова «должна». Никогда не советуй покупать одежду, обувь или косметику. Никогда не называй бренды. Верни строго один JSON-объект.';
+    let ok = false;
+    let reason = "";   // ← настоящая причина отказа, чтобы её было видно
     try {
-      const content = imgs.slice(0,6).map(im=>({ type:"image", source:{ type:"base64", media_type:im.media, data:im.b64 } }));
-      for(let _i=0;_i<content.length;_i++){ content[_i]=await sgShrinkBlock(content[_i]); }
-      content.push({ type:"text", text:'Это мои сохранённые картинки (пины) желаемой эстетики жизни. Изучи их внимательно и вместе, как единый образ жизни, и верни ТОЛЬКО валидный JSON без markdown, по-русски: {"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни хотя бы две детали прямо с картинок","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника — место, время суток и эпоха или образ, максимум 3-4 слова, чтобы хотелось выложить: например «Парижское утро 70-х», «Тосканский полдень», «Скандинавская зима у окна», «Прованская хозяйка», «Киногероиня французской новой волны»","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[6 конкретных повторяющихся образов, объектов или цветов, которые реально видно на картинках],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий прямо из этих пинов — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например «Сервируй завтрак у окна: льняная салфетка, тарелка из шкафа, 15 минут без телефона»); никаких общих фраз],"identity":{"who":"3-4 предложения — какая это личность: её характер, ритм, отношение к себе и дому; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, которые делают её этой личностью — разнообразные и нетипичные, каждая с указанием времени, подобранные под её пины: например «10 минут итальянского за утренним кофе», «растяжка 10 минут перед душем», «страница дневника перед сном», «5 минут каллиграфии»],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"outfits":[3 готовых образа под её эстетику, собранных из базовых вещей её вероятного гардероба — каждый одним предложением: типы вещей, цвета, материалы; можно опираться на актуальные тренды, но БЕЗ единого названия бренда или марки],"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эту эстетику — текстиль, посуда, свет, свечи и ароматы, вазы, хранение, растения, постеры; каждая с материалом или цветом, в основном доступные; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов, каждый одной строкой в формате «Название — суть»; утренние, вечерние или недельные],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках есть что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути и теперь впускает это в жизнь; иначе null"') : "null")+'}. Пиши предметно: конкретные вещи, места и действия, а не абстракции. Тон тёплый и личный, во втором лице, как письмо подруге. Без оценок, без слова «должна», без токсичной продуктивности. Никогда не советуй покупать одежду, обувь или косметику — если речь о стиле, предлагай собрать образ из её собственного гардероба («собери из своего: …»). Никогда не называй бренды и марки. Верни строго JSON.' });
-      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:2600, system:"Ты — Slow Glow: тёплый голос о медленной красивой жизни и внимательный визуальный аналитик. По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи и ритуалы, без воды и абстракций. Покупки советуешь только для дома и интерьера; одежду покупать не советуешь никогда — только собирать образы из её гардероба. Никогда не называешь бренды, марки и магазины — вещи описываешь по типу, цвету и материалу; на актуальные тренды ссылаться можно, но без имён брендов. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».", messages:[{ role:"user", content }] }) });
-      const data = await r.json();
-      let txt = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
-      const obj = sgParseJSON(txt);
-      if (obj && obj.patterns) { const _a=(x)=>Array.isArray(x)?x:[]; const clean={ ...obj, patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month), outfits:_a(obj.outfits), palette:_a(obj.palette).filter(x=>/^#[0-9a-fA-F]{3,8}$/.test(String(x))).slice(0,6) }; if(obj.identity && typeof obj.identity==="object"){ clean.identity={ who:String(obj.identity.who||""), habits:_a(obj.identity.habits), mindset:_a(obj.identity.mindset) }; } else { delete clean.identity; } if(obj.twin && typeof obj.twin==="object" && obj.twin.name){ clean.twin={ name:String(obj.twin.name).slice(0,42), essence:String(obj.twin.essence||""), traits:_a(obj.twin.traits).slice(0,3) }; } else { delete clean.twin; } setAi(clean); sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) }); try{ sgStore.set("sg_dream_full", clean); }catch(e){} try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){} sgTrack("analyzer_done", { imgs: imgs.length }); }
-    } catch(e) {}
+      // Каждое фото получает подпись «Фото N:» — так модель не смешивает кадры
+      const list = imgs.slice(0,8);
+      const blocks = [];
+      for (let i=0;i<list.length;i++){
+        blocks.push(await sgShrinkBlock({ type:"image", source:{ type:"base64", media_type:list[i].media, data:list[i].b64 } }));
+      }
+      // Проверка зрения на первом кадре: если модель не может назвать, что на фото,
+      // значит картинки до неё не доходят — и разбор строить не на чем.
+      const vt = await sgVisionSelfTest(blocks[0]);
+      if (!vt.txt) { reason = "фото не доходят до модели — " + vt.reason; throw new Error(reason); }
+      for (let attempt=0; attempt<2 && !ok; attempt++){
+        try{
+          const res = await sgVisionAsk({ sys, shots: blocks, maxTokens:3400,
+            task: task + (attempt>0 ? " ВАЖНО: прошлый ответ не был валидным JSON — верни СТРОГО один JSON-объект без текста вокруг и без markdown." : "") });
+          if (!res.txt) { reason = res.reason; continue; }
+          const txt = res.txt;
+          const obj = sgParseJSON(txt);
+          if (obj && (!Array.isArray(obj.seen) || obj.seen.length===0)) { reason = "модель не описала ни одного фото — скорее всего, картинки не дошли до неё"; continue; }
+          if (obj && (Array.isArray(obj.patterns) || obj.read)) {
+            const _a=(x)=>Array.isArray(x)?x:[];
+            const clean={ ...obj, seen:_a(obj.seen).map(s=>String(s)).slice(0,8), patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month), outfits:_a(obj.outfits), palette:_a(obj.palette).filter(x=>/^#[0-9a-fA-F]{3,8}$/.test(String(x))).slice(0,6) };
+            if(obj.identity && typeof obj.identity==="object"){ clean.identity={ who:String(obj.identity.who||""), habits:_a(obj.identity.habits), mindset:_a(obj.identity.mindset) }; } else { delete clean.identity; }
+            if(obj.twin && typeof obj.twin==="object" && obj.twin.name){ clean.twin={ name:String(obj.twin.name).slice(0,42), essence:String(obj.twin.essence||""), traits:_a(obj.twin.traits).slice(0,3) }; } else { delete clean.twin; }
+            setAi(clean);
+            sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) });
+            try{ sgStore.set("sg_dream_full", clean); }catch(e){}
+            try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){}
+            sgTrack("analyzer_done", { imgs: list.length });
+            ok = true;
+          }
+        }catch(e){ reason = String((e&&e.message)||e).slice(0,140); }
+      }
+    } catch(e) { reason = String((e&&e.message)||e).slice(0,140); }
+    if (!ok) {
+      setErr("Не получилось рассмотреть фото. Я не покажу шаблонный разбор вместо настоящего." + (reason ? " Причина: " + reason : ""));
+      try{ console.error("[SlowGlow] анализ не удался:", reason, "| endpoint:", AI_ENDPOINT, "| формат:", (typeof localStorage!=="undefined" && localStorage.getItem(SG_VIA_KEY))||"не определён"); }catch(_e){}
+      sgTrack("analyzer_fail", { reason: reason.slice(0,60) });
+    }
     setBusy(false);
   };
   const chip = (txt,bg)=>(<span style={{ fontFamily:serif, fontStyle:"italic", fontSize:13, color:C.ink, background:bg, padding:"6px 12px", borderRadius:99 }}>{txt}</span>);
@@ -3533,8 +3835,13 @@ function PinReality({ ch, dna, onClose }) {
           {busy ? BUSY_STEPS[bstep] : (ai ? "Обновить мой разбор" : "Проанализировать мои сохранения")}
         </button>
       )}
-      {ai && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, color:"#6E8E5E", margin:"0 0 18px", textAlign:"center" }}>✦ Анализ построен по твоим фото</p>}
-      {!ai && <div style={{ height:18 }}/>}
+      {err && !busy && (
+        <div className="fade" style={{ borderRadius:14, padding:"12px 14px", margin:"0 0 16px", background:"#F6E3DC", border:"1px solid #E4B7A6" }}>
+          <p style={{ fontSize:13, lineHeight:1.45, color:"#7A3B22", margin:0 }}>{err}</p>
+        </div>
+      )}
+      {ai && !err && <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, color:"#6E8E5E", margin:"0 0 18px", textAlign:"center" }}>✦ Анализ построен по твоим фото</p>}
+      {!ai && !err && <div style={{ height:18 }}/>}
 
       {ai && ai.echo && (
         <div className="fade" style={{ position:"relative", borderRadius:18, padding:"16px 18px 16px 20px", marginBottom:20, background:`linear-gradient(125deg, ${C.butter}33, ${ch.partner}22 60%, rgba(255,255,255,0.4))`, border:`1px solid ${C.line}`, overflow:"hidden" }}>
@@ -3544,6 +3851,19 @@ function PinReality({ ch, dna, onClose }) {
             <Label color={ch.partner}>Ты ведь помнишь</Label>
           </div>
           <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16.5, lineHeight:1.42, color:C.ink, margin:0 }}>{ai.echo}</p>
+        </div>
+      )}
+
+      {ai && ai.seen && ai.seen.length>0 && (
+        <div className="fade" style={{ marginBottom:18, borderRadius:16, padding:"13px 15px", background:"rgba(255,255,255,0.55)", border:`1px solid ${C.line}` }}>
+          <Label color={ch.partner}>Что буквально на твоих фото</Label>
+          <p style={{ fontSize:11.5, color:C.inkFaint, margin:"3px 0 9px" }}>Проверь меня — весь разбор ниже построен только на этом.</p>
+          {ai.seen.map((s,i)=>(
+            <div key={i} style={{ display:"flex", gap:9, marginBottom:6 }}>
+              <span style={{ flexShrink:0, width:20, height:20, borderRadius:99, background:`linear-gradient(135deg, ${C.butter}, ${ch.partner}B3)`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:serif, fontStyle:"italic", fontSize:11, color:C.ink }}>{i+1}</span>
+              <p style={{ fontSize:13, lineHeight:1.45, color:C.ink, margin:0 }}>{String(s).replace(/^Фото\s*\d+\s*[:—-]\s*/i,"")}</p>
+            </div>
+          ))}
         </div>
       )}
 
@@ -3573,8 +3893,13 @@ function PinReality({ ch, dna, onClose }) {
         </div>
       )}
 
+      {!ai && (
+        <div style={{ borderRadius:14, padding:"10px 13px", margin:"0 0 14px", background:`${ch.partner}1A`, border:`1px dashed ${ch.partner}66` }}>
+          <p style={{ fontSize:12.5, lineHeight:1.45, color:C.inkSoft, margin:0 }}>Ниже — пример разбора под эстетику «{ch.aes}». Загрузи свои фото и нажми «Проанализировать» — и всё пересоберётся именно по твоим кадрам.</p>
+        </div>
+      )}
       <Label>Что я вижу в твоих сохранениях</Label>
-      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>Это повторяется в том, что тебя цепляет — так выглядит твоя эстетика «{ch.aes}».</p>
+      <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 9px" }}>{ai ? "Это повторяется на твоих фото — так выглядит твоя эстетика." : `Это повторяется в том, что тебя цепляет — так выглядит твоя эстетика «${ch.aes}».`}</p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:20 }}>{D.patterns.map(p=><span key={p}>{chip(p, C.sage)}</span>)}</div>
 
       <Label>Что ты на самом деле ищешь</Label>
@@ -4304,7 +4629,7 @@ function SportSec({ icon, title, items, num }){
   if(!items || !items.length) return null;
   return (
     <div style={{ margin:"4px 0 14px" }}>
-      <div style={{ fontFamily:head, fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase", color:C.inkFaint, margin:"0 0 8px" }}>{icon} {title}</div>
+      <div style={{ display:"flex", alignItems:"center", gap:6, fontFamily:head, fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase", color:C.inkFaint, margin:"0 0 8px" }}><SGGlyph em={icon} size={13} color={C.inkFaint} sw={2}/>{title}</div>
       {items.map((it,i)=>(
         <div key={i} style={{ display:"flex", gap:9, marginBottom:7 }}>
           <span style={{ flexShrink:0, color:C.inkFaint, fontFamily:head, fontSize:11.5, marginTop:1.5, minWidth:14 }}>{num?(i+1)+".":"·"}</span>
@@ -4454,14 +4779,15 @@ function SportView({ ch, setDetail, onClose }) {
         <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:26, lineHeight:1.1, margin:0, color:C.ink }}>Движение на сегодня</h1>
       </div>
       <p style={{ fontSize:14, lineHeight:1.6, color:C.inkSoft, margin:"4px 0 18px" }}>Спорт как вдохновение, а не обязанность. Выбери своё из тридцати направлений — и найди, чем зажечься, как стать лучше и под что двигаться сегодня.</p>
-      <div style={{ borderRadius:18, overflow:"hidden", marginBottom:18, position:"relative" }}>
-        <Photo t={0} url={IMG.strengthIce} h={150} radius={18}>
-          <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 40%, rgba(26,26,26,0.5) 100%)" }}/>
-          <div style={{ position:"absolute", left:15, right:15, bottom:12 }}>
-            <div style={{ fontFamily:head, fontSize:9, letterSpacing:"0.14em", textTransform:"uppercase", color:"rgba(250,248,241,0.85)" }}>Сила в спокойствии</div>
-            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, color:C.cream, lineHeight:1.15, marginTop:2 }}>Тело любит мягкую регулярность</div>
+      <div style={{ borderRadius:18, marginBottom:18, position:"relative", overflow:"hidden", height:118, border:`1px solid ${C.line}`, background:`linear-gradient(120deg, ${C.sage}59, ${ch.partner}40 55%, ${C.butter})` }}>
+        <div aria-hidden="true" style={{ position:"absolute", right:-26, top:-30, width:120, height:120, borderRadius:99, background:"rgba(255,255,255,0.32)" }}/>
+        <div style={{ position:"absolute", left:15, right:15, bottom:13, display:"flex", alignItems:"flex-end", gap:12 }}>
+          <SGBadge name="racket" partner={ch.partner} size={40}/>
+          <div>
+            <div style={{ fontFamily:head, fontSize:9, letterSpacing:"0.14em", textTransform:"uppercase", color:"rgba(26,26,26,0.55)" }}>Сила в спокойствии</div>
+            <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, color:C.ink, lineHeight:1.15, marginTop:2 }}>Тело любит мягкую регулярность</div>
           </div>
-        </Photo>
+        </div>
       </div>
       <div style={{ marginBottom:24 }}>
         <Label>Вдохновляйся и пробуй</Label>
@@ -4478,7 +4804,7 @@ function SportView({ ch, setDetail, onClose }) {
             <div className="row" style={{ position:"absolute", top:"calc(100% + 6px)", left:0, right:0, zIndex:30, maxHeight:330, overflowY:"auto", borderRadius:16, border:`1px solid ${C.line}`, background:C.cream, boxShadow:"0 24px 50px -24px rgba(26,26,26,0.45)", padding:6 }}>
               {SPORTS30.map(s=>(
                 <button key={s.v} onClick={()=>pick(s.v)} className="pop" style={{ width:"100%", textAlign:"left", display:"flex", alignItems:"center", gap:11, padding:"11px 12px", borderRadius:11, border:"none", background:picked===s.v?`${ch.partner}22`:"transparent", cursor:"pointer" }}>
-                  <span style={{ fontSize:18, width:24, textAlign:"center" }}>{s.e}</span>
+                  <span style={{ width:24, display:"flex", justifyContent:"center" }}><SGGlyph em={s.e} size={18} color={C.ink} sw={1.6}/></span>
                   <span style={{ flex:1, display:"flex", alignItems:"baseline", gap:8 }}><span style={{ fontFamily:head, fontSize:14, color:C.ink }}>{s.v}</span><span style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.06em", textTransform:"uppercase", color:C.inkFaint }}>{s.cat}</span></span>
                 </button>
               ))}
@@ -4488,7 +4814,7 @@ function SportView({ ch, setDetail, onClose }) {
         {SPORT && (
           <div style={{ marginTop:14, borderRadius:20, overflow:"hidden", border:`1px solid ${ch.partner}`, background:`linear-gradient(168deg, ${ch.partner}1f, rgba(255,255,255,0.7) 60%)` }}>
             <div style={{ padding:"18px 18px 6px" }}>
-              <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:24, color:C.ink, lineHeight:1.15 }}>{SPORT.e} {SPORT.v}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, fontFamily:serif, fontStyle:"italic", fontSize:24, color:C.ink, lineHeight:1.15 }}><SGBadge em={SPORT.e} partner={ch.partner} size={36}/>{SPORT.v}</div>
               <p style={{ fontSize:14.5, lineHeight:1.5, color:C.ink, margin:"8px 0 0", fontFamily:serif, fontStyle:"italic" }}>{SPORT.insp}</p>
             </div>
             {SPORT.event && (
@@ -5336,10 +5662,9 @@ function Paywall({ ch, feature, onClose, onSubscribe }) {
           <div style={{ display:"flex", justifyContent:"flex-end" }}>
             <button onClick={onClose} aria-label="Закрыть" style={{ border:"none", background:"rgba(255,255,255,0.7)", borderRadius:99, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:C.inkSoft }}><X size={17} strokeWidth={2}/></button>
           </div>
-          <div style={{ margin:"2px 0 14px", borderRadius:18, overflow:"hidden", position:"relative" }}>
-            <Photo t={1} url={IMG.parisCafe} h={102} radius={0}>
-              <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 35%, rgba(26,26,26,0.35))" }}/>
-            </Photo>
+          <div style={{ margin:"2px 0 14px", borderRadius:18, height:88, position:"relative", overflow:"hidden", background:`linear-gradient(120deg, ${C.butter}, ${ch.partner}8C 60%, ${C.oat})` }}>
+            <div aria-hidden="true" style={{ position:"absolute", left:-22, top:-28, width:110, height:110, borderRadius:99, background:"rgba(255,255,255,0.32)" }}/>
+            <div aria-hidden="true" style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", opacity:0.85 }}><SGFleur color="#1A1A1A" size={56}/></div>
           </div>
           <div style={{ textAlign:"center", marginTop:-6, marginBottom:18 }}>
             <GlowOrb partner={ch.partner} size={86} style={{ margin:"0 auto 14px" }}/>
