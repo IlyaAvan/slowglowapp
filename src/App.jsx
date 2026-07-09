@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Home, MapPin, Plus, User, Search, Heart, ChevronDown, ArrowRight, ArrowLeft, X, Send, Clock, Users, Wind, ExternalLink, Play, Download, Sparkles, Check, BookOpen, LayoutGrid } from "lucide-react";
 import { LANG_WEEK_EXTRA } from "./lang_weeks.js";
-import { C, CHAPTERS, PH, PH_GRAD, DECO_DEFAULT, IMG, QUOTES, MICRO, DIET, SKIN, RHYTHM, PET, CITY_HINTS, TODAY_POOL, PLAYLISTS, PL_BY_CH, STEP_POOL, TODAY_ROMANCE, STEP_ROMANCE, TODAY_COASTAL, STEP_COASTAL, TODAY_SLOW, STEP_SLOW, TODAY_BY_CH, STEP_BY_CH, PLACE_POOL, LEISURE, LEISURE_BY_CH, NICHE_BY_CH, INSPO, DREAM_BY_CH, TRAVEL, TRAVEL_BY_CH, _CITY_GRAD, LANG_STAMP, CITY_TYPE, CITY_GENERIC, EVENTS, PINS_POOL, RUBRICS, RUBRIC_ORDER, RUBRIC_COL, RUBRICS_ROMANCE, RUBRICS_COASTAL, RUBRICS_SLOW, RUBRICS_BY_CH, STYLIST_BY_CH, WORLD, WORLD_ORDER, _wikiCache, RITUAL_STEPS, ENVELOPE_IDEAS, ENVELOPE_QS, SHOP, DAY_BEAUTY, EDITOR_NOTES, NEARBY_CATS, PLACE_Q, MAP_PLACES, MAP_LEISURE, MAP_ROUTES, MAP_TABS, ROUTE_PLANS, MIND, MIND_GRAD, MIND_CAT, MIND_IMG, MIND_CAT_IMG, CAPSULES, RECIPES, LANG_VOCAB } from "./appdata.js";
+import { C, CHAPTERS, PH, PH_GRAD, DECO_DEFAULT, IMG, QUOTES, MICRO, DIET, SKIN, RHYTHM, PET, CITY_HINTS, TODAY_POOL, PLAYLISTS, PL_BY_CH, STEP_POOL, TODAY_ROMANCE, STEP_ROMANCE, TODAY_COASTAL, STEP_COASTAL, TODAY_SLOW, STEP_SLOW, TODAY_BY_CH, STEP_BY_CH, PLACE_POOL, LEISURE, LEISURE_BY_CH, NICHE_BY_CH, INSPO, DREAM_BY_CH, TRAVEL, TRAVEL_BY_CH, _CITY_GRAD, LANG_STAMP, CITY_TYPE, CITY_GENERIC, EVENTS, PINS_POOL, RUBRICS, RUBRIC_ORDER, RUBRIC_COL, RUBRICS_ROMANCE, RUBRICS_COASTAL, RUBRICS_SLOW, RUBRICS_BY_CH, STYLIST_BY_CH, WORLD, WORLD_ORDER, _wikiCache, RITUAL_STEPS, ENVELOPE_IDEAS, ENVELOPE_QS, SHOP, DAY_BEAUTY, EDITOR_NOTES, NEARBY_CATS, PLACE_Q, MAP_PLACES, MAP_LEISURE, MAP_ROUTES, MAP_TABS, ROUTE_PLANS, MIND, MIND_GRAD, MIND_CAT, MIND_IMG, MIND_CAT_IMG, CAPSULES, RECIPES, LANG_VOCAB, FEED_IDEAS, FEED_BG } from "./appdata.js";
 
 
 const LINE_ICN = {
@@ -571,11 +571,25 @@ if (typeof window !== "undefined" && !window.__sgInit) {
    бесконечно (карточки генерируются детерминированно от индекса), сердечко
    сохраняет в «Сохранённое». Повод зависнуть — и мягкий путь к анализатору. ── */
 function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
-  const POOL = React.useMemo(()=> Object.values(IMG).filter(u=>typeof u==="string"), []);
-  const CAPS = React.useMemo(()=> [
-    ...DAY_BEAUTY.map(d=>d.v), ...ENVELOPE_IDEAS, ...RITUAL_STEPS,
-  ], []);
-  const [count, setCount] = useState(24);
+  const doyR = sgDoy();
+  // Ежедневная ротация: каждый день пул перетасовывается заново — сдвиг + шаг,
+  // взаимно простой с длиной, поэтому обходится весь пул без повторов.
+  const rotate = React.useCallback((arr, salt)=>{
+    const n = arr.length; if(!n) return arr;
+    const steps = [7,11,13,17,19,23,29,31,37,41,43,47];
+    let step = steps[(doyR + salt) % steps.length];
+    while (n % step === 0) step++;
+    const off = (doyR * (17 + salt) + salt * 5) % n;
+    return Array.from({length:n}, (_,i)=> arr[(off + i*step) % n]);
+  }, [doyR]);
+  const POOL = React.useMemo(()=> rotate(Object.values(IMG).filter(u=>typeof u==="string"), 1), [rotate]);
+  const CAPS = React.useMemo(()=> rotate([
+    ...FEED_IDEAS, ...DAY_BEAUTY.map(d=>d.v), ...ENVELOPE_IDEAS, ...RITUAL_STEPS,
+  ], 2), [rotate]);
+  const QPOOL = React.useMemo(()=> rotate(QUOTES, 3), [rotate]);
+  const QSPOOL = React.useMemo(()=> rotate(ENVELOPE_QS, 4), [rotate]);
+  const BGPOOL = React.useMemo(()=> rotate(FEED_BG, 5), [rotate]);
+  const [count, setCount] = useState(48);
   const [burst, setBurst] = useState(null); // id карточки с всплеском сердца
   const lastTap = React.useRef({});
   const doy = sgDoy();
@@ -592,28 +606,38 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
   const card = (idx)=>{
     const kind = idx===1 ? "day" : (idx%9===4 ? "quote" : (idx%9===7 ? "q" : "photo"));
     if (kind==="quote"){
-      const qt = QUOTES[(idx*5 + doy*3 + 1) % QUOTES.length];
+      const qt = QPOOL[idx % QPOOL.length];
       return (
-        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, border:`1px solid ${C.line}`, background:`linear-gradient(150deg, ${C.butter}55, rgba(255,255,255,0.8))`, padding:"20px 16px", position:"relative" }}>
-          <span style={{ color:ch.partner, fontSize:15 }}>✦</span>
-          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16.5, lineHeight:1.4, color:C.ink, margin:"7px 0 0" }}>{qt}</p>
+        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", border:`1px solid ${C.line}`, position:"relative" }}>
+          <Photo t={idx%6} url={BGPOOL[idx % BGPOOL.length]} h={196} radius={0}>
+            <div style={{ position:"absolute", inset:0, background:`linear-gradient(160deg, rgba(26,26,26,0.32), rgba(26,26,26,0.62))` }}/>
+          </Photo>
+          <div style={{ position:"absolute", inset:0, padding:"18px 15px", display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
+            <span style={{ color:"#fff", fontSize:14, opacity:0.85 }}>✦</span>
+            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, lineHeight:1.35, color:"#fff", margin:"6px 0 0", textShadow:"0 1px 10px rgba(26,26,26,0.6)" }}>{qt}</p>
+          </div>
         </div>
       );
     }
     if (kind==="q"){
-      const qq = ENVELOPE_QS[(idx*7 + doy*11 + 4) % ENVELOPE_QS.length];
+      const qq = QSPOOL[idx % QSPOOL.length];
       return (
-        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, border:`1px solid ${ch.partner}55`, background:`${ch.partner}14`, padding:"18px 16px" }}>
-          <div style={{ fontFamily:head, fontSize:9, letterSpacing:"0.16em", textTransform:"uppercase", color:ch.partner }}>Вопрос себе</div>
-          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.4, color:C.ink, margin:"7px 0 0" }}>{qq}</p>
+        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", border:`1px solid ${ch.partner}66`, position:"relative" }}>
+          <Photo t={(idx+2)%6} url={BGPOOL[(idx+4) % BGPOOL.length]} h={182} radius={0}>
+            <div style={{ position:"absolute", inset:0, background:`linear-gradient(160deg, ${ch.partner}66, rgba(26,26,26,0.66))` }}/>
+          </Photo>
+          <div style={{ position:"absolute", inset:0, padding:"16px 15px", display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
+            <div style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(255,255,255,0.85)" }}>Вопрос себе</div>
+            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.35, color:"#fff", margin:"6px 0 0", textShadow:"0 1px 10px rgba(26,26,26,0.6)" }}>{qq}</p>
+          </div>
         </div>
       );
     }
     const special = kind==="day";
-    const url = POOL[(special ? doy*17+5 : idx*7 + doy*13 + 3) % POOL.length];
-    const cap = special ? "Пин дня · только сегодня" : CAPS[(idx*11 + doy*5 + 2) % CAPS.length];
+    const url = POOL[(special ? 0 : idx) % POOL.length];
+    const cap = special ? "Пин дня · только сегодня" : CAPS[idx % CAPS.length];
     const h = special ? 236 : 168 + ((idx*37) % 132);
-    const id = "feed_" + (special ? "day_"+doy : ((idx*7 + doy*13 + 3) % POOL.length) + "_" + ((idx*11 + doy*5 + 2) % CAPS.length));
+    const id = "feed_" + (special ? "day_"+doy : (idx % POOL.length) + "_" + (idx % CAPS.length));
     const item = { id, kind:"поток", title:cap, t:idx%6, url };
     const isSaved = saved.some(x=>x.id===id);
     return (
@@ -642,7 +666,7 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
         </div>
         <SGFleur color={ch.partner} size={38}/>
       </div>
-      <div className="sg-scroll" onScroll={(e)=>{ const el=e.currentTarget; if(el.scrollTop + el.clientHeight > el.scrollHeight - 700) setCount(c=> c<600 ? c+24 : c); }} style={{ flex:1, overflowY:"auto", padding:"12px 12px 90px" }}>
+      <div className="sg-scroll" onScroll={(e)=>{ const el=e.currentTarget; if(el.scrollTop + el.clientHeight > el.scrollHeight - 800) setCount(c=> c<1200 ? c+48 : c); }} style={{ flex:1, overflowY:"auto", padding:"12px 12px 90px" }}>
         <div style={{ columns:2, columnGap:10 }}>
           {Array.from({length:count}).map((_,i)=>card(i))}
         </div>
