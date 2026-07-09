@@ -62,9 +62,9 @@ async function sgShrinkBlock(block){
     if(typeof document==="undefined" || typeof Image==="undefined") return block;
     const mt = block.source.media_type || "image/jpeg";
     const img = await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src="data:"+mt+";base64,"+block.source.data; });
-    const MAX=1280, w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    const MAX=1100, w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
     if(!w || !h) return block;
-    if(Math.max(w,h)<=MAX && block.source.data.length<900000) return block; // уже небольшое — не трогаем
+    if(Math.max(w,h)<=MAX && block.source.data.length<400000) return block; // уже небольшое — не трогаем
     const s=Math.min(1, MAX/Math.max(w,h)), cw=Math.max(1,Math.round(w*s)), chh=Math.max(1,Math.round(h*s));
     const cv=document.createElement("canvas"); cv.width=cw; cv.height=chh;
     cv.getContext("2d").drawImage(img,0,0,cw,chh);
@@ -3773,7 +3773,7 @@ function PinReality({ ch, dna, onClose }) {
     let reason = "";   // ← настоящая причина отказа, чтобы её было видно
     try {
       // Каждое фото получает подпись «Фото N:» — так модель не смешивает кадры
-      const list = imgs.slice(0,8);
+      const list = imgs.slice(0,6);   // лимит тела запроса на Vercel — около 4,5 МБ
       const blocks = [];
       for (let i=0;i<list.length;i++){
         blocks.push(await sgShrinkBlock({ type:"image", source:{ type:"base64", media_type:list[i].media, data:list[i].b64 } }));

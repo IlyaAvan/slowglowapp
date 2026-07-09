@@ -19,18 +19,24 @@
    { content: [ { type: "text", text: "…" } ] }
    ═══════════════════════════════════════════════════════════════════ */
 
-import { Agent, setGlobalDispatcher } from "undici";
 import { randomUUID } from "crypto";
 
 /* Серверы Сбера отдают сертификат российского УЦ, которого нет в списке доверенных
-   у Node на большинстве хостингов. Без этой строки любой запрос падает с ошибкой
-   сертификата. Мы обращаемся только к домену Сбера, но знай: проверка отключена. */
-setGlobalDispatcher(new Agent({ connect: { rejectUnauthorized: false } }));
+   у Node. Без этой строки запрос падает с ошибкой сертификата. Осознанное
+   послабление: обращаемся только к домену Сбера. Пакет undici не нужен. */
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const BASE = "https://gigachat.devices.sberbank.ru/api/v1";
 
-export const config = { api: { bodyParser: { sizeLimit: "20mb" } } };
+/* Тело может прийти разобранным, строкой или потоком — читаем все варианты */
+async function readBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string") return JSON.parse(req.body);
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
 
 /* Токен живёт ~30 минут — держим его в памяти функции, чтобы не дёргать OAuth каждый раз */
 let cached = { token: null, until: 0 };
@@ -96,9 +102,11 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Только POST" });
 
-  const body = typeof req.body === "string" ? safeJson(req.body) : req.body;
+  let body;
+  try { body = await readBody(req); }
+  catch (e) { return res.status(400).json({ error: "не удалось прочитать запрос: " + String(e.message) }); }
   if (!body || !Array.isArray(body.messages)) {
-    return res.status(400).json({ error: "Ожидается { max_tokens, system, messages }" });
+    return res.status(400).json({ error: "ожидается { max_tokens, system, messages }" });
   }
 
   try {
@@ -151,7 +159,7 @@ export default async function handler(req, res) {
     const t = await r.text();
     if (!r.ok) {
       console.error("[gigachat] chat", r.status, t.slice(0, 400));
-      return res.status(r.status).send(t);
+      return res.status(r.status).json({ error: "GigaChat: " + r.status + " " + t.slice(0, 200) });
     }
 
     const j = JSON.parse(t);
@@ -166,5 +174,3 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: String((e && e.message) || e) });
   }
 }
-
-function safeJson(s) { try { return JSON.parse(s); } catch { return null; } }
