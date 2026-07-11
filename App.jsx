@@ -633,89 +633,158 @@ if (typeof window !== "undefined" && !window.__sgInit) {
    а подпись выбирается только из идей этой темы. Фото, не попавшие ни в одну
    тему (города, обложки), в ленту не идут. ── */
 const SG_FEED_TOPICS = [
-  { re:/tennis|padel|racket|court|balls/i, caps:[
+  { name:"Игра", re:/tennis|padel|racket|court|balls/i, caps:[
     "Выйди на корт даже на полчаса — тело помнит больше, чем кажется",
-    "Найди партнёршу и сыграй сет без счёта",
-    "Белая форма, гетры, ракетка — оденься для игры, даже если играешь плохо",
-    "Посмотри чужой матч и обрати внимание не на удары, а на паузы",
+    "Возьми урок с тренером и попроси поставить один удар",
+    "Сыграй сет без счёта — просто ради звука мяча",
+    "Белая форма и гетры: оденься для игры красиво, даже если играешь просто",
+    "Посмотри чужой матч и замечай не удары, а паузы",
+    "Найди партнёршу по игре в своём районе",
+    "После игры — холодный лимонад на скамейке, не спеша",
   ]},
-  { re:/run(?!way)|track|pavement/i, caps:[
-    "Пробегись утром до того, как проснётся улица",
-    "Смени маршрут пробежки и посчитай новые детали",
-    "Беги медленно и без часов — просто чтобы дышать",
-    "Выйди на пробежку к воде и остановись, когда захочется",
+  { name:"Бег", re:/run(?!way)|track|pavement/i, caps:[
+    "Пробегись до того, как проснётся улица",
+    "Смени маршрут и посчитай новые детали по пути",
+    "Беги без часов и наушников — только дыхание",
+    "Добеги до воды и постой минуту",
+    "Медленный бег вечером — способ закончить день",
+    "Пробеги мимо красивого дома и рассмотри его на обратном пути",
+    "Носки, в которых приятно бегать, — мелочь, которая решает",
   ]},
-  { re:/yoga|pilates|stretch/i, caps:[
-    "Расстели коврик там, где есть свет из окна",
-    "Пятнадцать минут растяжки без музыки и без телефона",
-    "Позанимайся на улице — трава меняет ощущение тела",
-    "Закончи практику лёжа и не вставай ещё минуту",
+  { name:"Практика", re:/yoga|pilates|stretch/i, caps:[
+    "Расстели коврик там, куда падает утренний свет",
+    "Пятнадцать минут растяжки без музыки",
+    "Практика на балконе или траве — земля меняет ощущение",
+    "Закончи занятие лёжа и не вставай ещё минуту",
+    "Одна поза у окна вместо ленты новостей",
+    "Дыши, считая до четырёх, — четыре круга",
+    "После практики — стакан воды с лимоном, медленно",
   ]},
-  { re:/bike|cycl|surf|paddle|swim|hik|mountain|trail|board/i, caps:[
+  { name:"Движение", re:/bike|cycl|surf|paddle|swim|board/i, caps:[
     "Возьми велосипед и доедь туда, куда обычно идёшь пешком",
-    "Заплыви чуть дальше, чем вчера, и полежи на воде",
-    "Пройди тропу без цели дойти до конца",
+    "Заплыви чуть дальше — и полежи на воде",
+    "Доска, вода, утро: попробуй сап хотя бы раз",
+    "Прокатись без цели, просто вдоль домов",
     "Выйди к воде на рассвете, пока никого нет",
+    "Час движения без телефона — любой, какой хочется",
+    "Новый маршрут выходного дня: колесо, вода или тропа",
   ]},
-  { re:/coffee|latte|espresso|freddo|cafe|cappuc/i, caps:[
+  { name:"Природа", re:/hik|mountain|trail|forest|bark|mist/i, caps:[
+    "Пройди тропу без цели дойти до конца",
+    "Подъём на холм ради одного вида",
+    "Потрогай кору дерева — вспомнить, какая она",
+    "Возьми термос и выйди в лес на час",
+    "Смотри на туман, пока он не растает",
+    "Собери три красивых камня — натюрморт на полку",
+    "Поход одного дня: рюкзак, бутерброды, никаких планов",
+  ]},
+  { name:"Море", re:/sea|beach|pool|boat|ocean|water|wave|coastal|sand|dune|pebble|calm/i, caps:[
+    "Посиди у воды столько, сколько захочется",
+    "Заплыв без спешки — до буйка и обратно",
+    "Пройди вдоль берега босиком",
+    "Собери морские стёклышки или гальку",
+    "Посмотри, как лодки возвращаются вечером",
+    "Открой окно к воде и просто слушай",
+    "День у бассейна: книга, вода, тень",
+  ]},
+  { name:"Небо", re:/sunset|sunrise|sky|cloud/i, caps:[
+    "Выйди смотреть закат, даже если он обычный",
+    "Рассвет раз в месяц — как маленький праздник",
+    "Полежи на траве и посмотри на облака десять минут",
+    "Сфотографируй небо и не выкладывай",
+    "Заметь, во сколько сегодня золотой час",
+    "Смотри на грозу из окна с чаем",
+    "Один вечер без потолка: балкон, крыша или холм",
+  ]},
+  { name:"Свет", re:/window|curtain|light|wall|plaster/i, caps:[
+    "Посмотри, как свет двигается по стене, и не фотографируй",
+    "Открой окно в семь утра и послушай улицу",
+    "Передвинь кресло к окну на один вечер",
+    "Задёрни лёгкую штору и смотри на тени",
+    "Вымой окно — свет станет другим",
+    "Найди самое светлое место в доме и позавтракай там",
+    "Заметь, какого цвета свет в комнате в шесть вечера",
+  ]},
+  { name:"Кофе", re:/coffee|latte|espresso|freddo|cafe|cappuc/i, caps:[
     "Сходи в кофейню одна и не бери телефон — только смотри",
     "Свари кофе дольше обычного и выпей, пока горячий",
     "Возьми чашку на балкон и не делай больше ничего",
     "Закажи то, что никогда не берёшь",
+    "Утренний кофе из той самой красивой чашки",
+    "Кофе навынос и длинная дорога домой пешком",
+    "Освой один новый способ заваривания",
   ]},
-  { re:/croissant|baguette|breakfast|tart|pasta|burrata|panzanella|salad|fig|yogurt|butter|honey|berry|fruit|lemonade|market|teapot|greekTable|picnic|basket/i, caps:[
+  { name:"Стол", re:/croissant|baguette|breakfast|tart|pasta|burrata|panzanella|salad|fig|yogurt|butter|honey|berry|fruit|lemonade|market|teapot|greekTable|picnic|basket/i, caps:[
     "Съешь завтрак на полу у окна, как в детстве",
     "Сходи на рынок без списка и купи то, что красиво",
-    "Приготовь ужин по рецепту из страны, где никогда не была",
+    "Приготовь ужин из страны, где ещё не была",
     "Накрой стол красиво, даже если ешь одна",
+    "Инжир, сыр и мёд — ужин без готовки",
+    "Испеки что-нибудь простое ради запаха в доме",
+    "Пикник ближе, чем кажется: плед и ближайший парк",
   ]},
-  { re:/lemon|peony|hydrangea|flower|blossom|bouquet|lavender|wildflower|jasmine|floral|cones/i, caps:[
-    "Купи цветы не в букете, а один стебель — и поставь в бутылку",
+  { name:"Цветы", re:/lemon|peony|hydrangea|flower|blossom|bouquet|lavender|wildflower|jasmine|floral|cones/i, caps:[
+    "Купи один стебель и поставь в бутылку",
     "Собери букет из того, что растёт у дома",
-    "Поставь цветы туда, где ты их увидишь утром",
+    "Поставь цветы туда, где увидишь их утром",
     "Зайди в цветочный без повода и просто постой",
+    "Засуши один цветок между страниц",
+    "Посади что-нибудь в горшок — пусть растёт медленно",
+    "Лаванда у кровати — сон станет мягче",
   ]},
-  { re:/book|read|library|sudoku|puzzle|chess|vinyl|film|cinema|art|paint|easel|marbling|origami|letter|kintsugi|craft|workshop/i, caps:[
+  { name:"Занятия", re:/book|read|library|sudoku|puzzle|chess|vinyl|film|cinema|art|paint|easel|marbling|origami|letter|kintsugi|craft|workshop/i, caps:[
     "Найди в доме вещь старше себя и рассмотри её",
     "Напиши бумажное письмо тому, кто его не ждёт",
-    "Читай пятнадцать минут стоя у окна, не садясь",
-    "Расставь книги по цвету — всего на один вечер",
+    "Читай пятнадцать минут стоя у окна",
+    "Расставь книги по цвету — на один вечер",
+    "Вечер одного альбома: слушай целиком, без перемотки",
+    "Собери пазл на сто деталей за вечер",
+    "Сходи в кино одна на утренний сеанс",
   ]},
-  { re:/sea|beach|pool|boat|sunset|sunrise|ocean|water|calm|wave|coastal|balcony|terrace|window|curtain|light|wall|sand|bark|forest|mist|sky|cloud|dune|pebble/i, caps:[
-    "Посмотри, как свет двигается по стене, и не фотографируй",
-    "Выйди смотреть закат, даже если он обычный",
-    "Открой окно и послушай, что слышно в семь утра",
-    "Посиди у воды столько, сколько захочется",
-  ]},
-  { re:/dress|suit|shirt|linen|silk|slip|pearl|hanger|capsule|sandal|swimsuit|knit|lbd|mirror|bob|trench|tweed|ballerina|dancing/i, caps:[
-    "Надень дома то, что бережёшь для особого случая",
-    "Разбери одну полку и оставь только то, что носишь",
+  { name:"Стиль", re:/dress|suit|shirt|linen|silk|slip|pearl|hanger|capsule|sandal|swimsuit|knit|lbd|mirror|bob|trench|tweed|ballerina|dancing/i, caps:[
+    "Надень дома то, что бережёшь для случая",
+    "Разбери одну полку и оставь только любимое",
     "Оденься сегодня для себя, а не для встречи",
     "Померь то, что давно висит, и реши честно",
+    "Погладь лён — это медитация",
+    "Один аксессуар, который меняет всё: примерь",
+    "Составь три образа из того, что уже есть",
   ]},
-  { re:/perfume|serum|blush|spf|soap|brush|skincare|cream|hairOil|bath|body|neroli|citrus/i, caps:[
-    "Нанеси крем медленно, будто это ритуал, а не задача",
+  { name:"Уход", re:/perfume|serum|blush|spf|soap|brush|skincare|cream|hairOil|bath|body|neroli|citrus/i, caps:[
+    "Нанеси крем медленно, будто это ритуал",
     "Побрызгай духами подушку, а не себя",
-    "Прими душ без телефона и без спешки",
-    "Найди запах, который возвращает тебя в детство",
+    "Душ без телефона и без спешки",
+    "Найди запах, который возвращает в детство",
+    "Ванна в среду — не ждать выходных",
+    "Расчеши волосы сто раз, как в старых книгах",
+    "Маска, свеча и двадцать минут тишины",
   ]},
-  { re:/laundry|home|ceramic|vase|shelf|plate|nook|living|glass|stillLife|azulejos|plaster|coin|slowGlow/i, caps:[
+  { name:"Дом", re:/laundry|home|ceramic|vase|shelf|plate|nook|living|glass|stillLife|azulejos|coin|slowGlow|balcony|terrace/i, caps:[
     "Переставь одну вещь в комнате и живи так неделю",
-    "Развесь бельё и посмотри, как оно сохнет на ветру",
+    "Развесь бельё и посмотри, как оно сохнет",
     "Вымой одну чашку так, будто она любимая",
-    "Убери с поверхности всё лишнее и оставь один предмет",
+    "Убери с поверхности всё и оставь один предмет",
+    "Составь натюрморт из трёх вещей на полке",
+    "Смени наволочки среди недели — просто так",
+    "Полей цветы медленно, как разговор",
   ]},
-  { re:/airport|plane|travel|suitcase|kit/i, caps:[
+  { name:"Дорога", re:/airport|plane|travel|suitcase|kit/i, caps:[
     "Собери сумку так, будто уезжаешь завтра",
-    "Открой карту и найди город, о котором ничего не знаешь",
-    "Съезди на день туда, куда можно доехать за час",
+    "Найди на карте город, о котором ничего не знаешь",
+    "Съезди на день туда, куда час пути",
     "Достань старые билеты и вспомни ту поездку",
+    "Список из пяти мест на эту осень",
+    "Выучи десять слов языка страны мечты",
+    "Электричка до конечной — маленькое путешествие",
   ]},
-  { re:/breathe|lotus|moonMilk|candle|evening|moon/i, caps:[
-    "Выключи свет и посиди со свечой пятнадцать минут без цели",
-    "Ложись сегодня на час раньше, ничего не досмотрев",
-    "Сделай десять медленных вдохов, считая каждый",
-    "Выпей тёплое молоко перед сном, как в детстве",
+  { name:"Вечер", re:/breathe|lotus|moonMilk|candle|evening|moon/i, caps:[
+    "Выключи свет и посиди со свечой пятнадцать минут",
+    "Ложись на час раньше, ничего не досмотрев",
+    "Десять медленных вдохов, считая каждый",
+    "Тёплое молоко с мёдом перед сном",
+    "Вечер без экранов после десяти",
+    "Запиши три вещи, которые сегодня заметила",
+    "Постели свежее и ляг в него с книгой",
   ]},
 ];
 /* Города, чьи названия случайно содержат ключевые слова тем (jakARTa, isleOfSKYe и т.п.) */
@@ -740,10 +809,20 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
   }, [doyR]);
   // В ленту берём только фотографии, у которых есть своя тема:
   // так подпись всегда описывает то, что действительно на кадре.
+  const [flt, setFlt] = useState("");   // выбранная тема; пустая строка = все
   const POOL = React.useMemo(()=> rotate(
-    Object.entries(IMG).filter(([k,u])=> typeof u==="string" && !/^mind_/.test(k) && sgFeedTopic(k)),
+    Object.entries(IMG).filter(([k,u])=>{
+      if (typeof u!=="string" || /^mind_/.test(k)) return false;
+      const t = sgFeedTopic(k);
+      return t && (!flt || t.name===flt);
+    }),
     1
-  ), [rotate]);
+  ), [rotate, flt]);
+  const TOPIC_NAMES = React.useMemo(()=> {
+    const seen = new Set();
+    for (const t of SG_FEED_TOPICS) seen.add(t.name);
+    return Array.from(seen);
+  }, []);
   const QPOOL = React.useMemo(()=> rotate(QUOTES, 3), [rotate]);
   const QSPOOL = React.useMemo(()=> rotate(ENVELOPE_QS, 4), [rotate]);
   const BGPOOL = React.useMemo(()=> rotate(FEED_BG, 5), [rotate]);
@@ -762,7 +841,8 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
     lastTap.current[id] = now;
   };
   const card = (idx)=>{
-    const kind = idx===1 ? "day" : (idx%9===4 ? "quote" : (idx%9===7 ? "q" : "photo"));
+    const kind = flt ? "photo" : (idx===1 ? "day" : (idx%9===4 ? "quote" : (idx%9===7 ? "q" : "photo")));
+    if (!POOL.length) return null;
     if (kind==="quote"){
       const qt = QPOOL[idx % QPOOL.length];
       return (
@@ -827,7 +907,17 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
         </div>
         <SGFleur color={ch.partner} size={38}/>
       </div>
-      <div className="sg-scroll" onScroll={(e)=>{ const el=e.currentTarget; if(el.scrollTop + el.clientHeight > el.scrollHeight - 800) setCount(c=> c<1200 ? c+48 : c); }} style={{ flex:1, overflowY:"auto", padding:"12px 12px 90px" }}>
+      <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"9px 12px 4px", WebkitOverflowScrolling:"touch", scrollbarWidth:"none" }}>
+        {["", ...TOPIC_NAMES].map(nm=>(
+          <button key={nm||"all"} onClick={()=>{ setFlt(nm); setCount(48); }} className="tapPop" style={{
+            flexShrink:0, padding:"6px 13px", borderRadius:99, cursor:"pointer",
+            border:`1px solid ${ (flt===nm) ? ch.partner : C.line }`,
+            background: (flt===nm) ? `linear-gradient(135deg, ${C.butter}, ${ch.partner}B3)` : "#fff",
+            fontFamily:head, fontSize:11.5, color:C.ink, whiteSpace:"nowrap",
+          }}>{nm || "Все"}</button>
+        ))}
+      </div>
+      <div className="sg-scroll" onScroll={(e)=>{ const el=e.currentTarget; if(el.scrollTop + el.clientHeight > el.scrollHeight - 800) setCount(c=> c<1200 ? c+48 : c); }} style={{ flex:1, overflowY:"auto", padding:"8px 12px 90px" }}>
         <div style={{ columns:2, columnGap:10 }}>
           {Array.from({length:count}).map((_,i)=>card(i))}
         </div>
@@ -3452,12 +3542,18 @@ function RecipeView({ data, onClose, setDetail }) {
       const prompt = "В холодильнике есть: " + fridge.join(", ") + ". Придумай вкусный рецепт в основном из этого.";
       const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000, system:sys, messages:[{ role:"user", content:prompt }] }) });
       const j = await r.json();
-      let txt = (j.content||[]).map(b=>b.text||"").join("").trim().replace(/```json|```/g,"").trim().replace(/\*\*/g,"");
-      const obj = JSON.parse(txt);
-      if(!obj.ingredients || !obj.steps) throw new Error("bad");
+      const txt = (j.content||[]).map(b=>b.text||"").join("").trim();
+      const obj = sgParseJSON(txt);   // вырезает JSON даже из ответа с преамбулой или markdown
+      if(!obj || !Array.isArray(obj.ingredients) || !Array.isArray(obj.steps)) throw new Error("bad json");
       obj.t = 4; obj.url = RECIPES[fridge.join(",").length % RECIPES.length].url; obj.market = "";
       setDetail({ item:obj, partner, recipe:true });
-    } catch(e){ const best = fridge.length ? RECIPES.map(r=>({r,n:score(r)})).sort((a,b)=>b.n-a.n)[0].r : pick(RECIPES,1,seedToday)[0]; setDetail({ item:best, partner, recipe:true }); }
+    } catch(e){
+      // Честность: показываем близкий рецепт из подборки и говорим об этом прямо,
+      // а не выдаём его за придуманный ИИ.
+      const best = fridge.length ? RECIPES.map(r=>({r,n:score(r)})).sort((a,b)=>b.n-a.n)[0].r : pick(RECIPES,1,seedToday)[0];
+      setAiErr("Не получилось придумать рецепт из твоих продуктов — показала близкий из подборки. Попробуй ещё раз.");
+      setDetail({ item:best, partner, recipe:true });
+    }
     setAiBusy(false);
   };
   const Card = (r,i,suffix) => (
@@ -3736,6 +3832,12 @@ function PinReality({ ch, dna, onClose }) {
   const [ai, setAi] = useState(()=> sgStore.get("sg_dream_full", null)); // прошлый разбор живёт между сессиями
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null); // честная ошибка вместо «выдуманного» разбора
+  // Лимит: не больше трёх разборов в день. Каждый разбор стоит реальных денег,
+  // и без потолка один человек может опустошить баланс за вечер.
+  const AN_LIMIT = 3;
+  const todayKey = ()=> "sg_an_" + new Date().toISOString().slice(0,10);
+  const anUsed = ()=> Number(sgStore.get(todayKey(), 0)) || 0;
+  const [quotaLeft, setQuotaLeft] = useState(()=> Math.max(0, AN_LIMIT - anUsed()));
   const BUSY_STEPS = ["Рассматриваю каждое фото по отдельности…","Записываю, что буквально на кадрах…","Собираю палитру и настроение…","Ищу твоего эстетического двойника…","Подбираю точные шаги и ритуалы…","Дописываю тёплое письмо тебе…"];
   const [bstep, setBstep] = useState(0);
   useEffect(()=>{ if(!busy) return; setBstep(0); const t=setInterval(()=>setBstep(b=>(b+1)%BUSY_STEPS.length), 2200); return ()=>clearInterval(t); },[busy]);
@@ -3773,6 +3875,10 @@ function PinReality({ ch, dna, onClose }) {
     let reason = "";   // ← настоящая причина отказа, чтобы её было видно
     try {
       // Каждое фото получает подпись «Фото N:» — так модель не смешивает кадры
+      if (anUsed() >= AN_LIMIT) {
+        setErr("На сегодня разборы закончились — их " + AN_LIMIT + " в день. Возвращайся завтра: сохранения никуда не денутся, а свежий взгляд иногда точнее.");
+        setBusy(false); return;
+      }
       const list = imgs.slice(0,6);   // лимит тела запроса на Vercel — около 4,5 МБ
       const blocks = [];
       for (let i=0;i<list.length;i++){
@@ -3795,7 +3901,7 @@ function PinReality({ ch, dna, onClose }) {
             if(obj.twin && typeof obj.twin==="object" && obj.twin.name){ clean.twin={ name:String(obj.twin.name).slice(0,42), essence:String(obj.twin.essence||""), traits:_a(obj.twin.traits).slice(0,3) }; } else { delete clean.twin; }
             setAi(clean);
             sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) });
-            try{ sgStore.set("sg_dream_full", clean); }catch(e){}
+            try{ clean._at = Date.now(); sgStore.set("sg_dream_full", clean); sgStore.set(todayKey(), anUsed()+1); setQuotaLeft(Math.max(0, AN_LIMIT - anUsed())); }catch(e){}
             try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){}
             sgTrack("analyzer_done", { imgs: list.length });
             ok = true;
@@ -3828,11 +3934,17 @@ function PinReality({ ch, dna, onClose }) {
           <input type="file" accept="image/*" multiple onChange={onPick} style={{ display:"none" }}/>
         </label>
       </div>
-      {imgs.length>0 && (
-        <button onClick={analyze} disabled={busy} style={{ width:"100%", height:48, borderRadius:99, border:"none", cursor:busy?"default":"pointer", background:busy?C.line:`radial-gradient(circle at 30% 30%, ${C.butter}, ${ch.partner})`, color:C.ink, fontFamily:head, fontSize:14.5, fontWeight:500, marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+      {imgs.length>0 && (<>
+        <button onClick={analyze} disabled={busy} style={{ width:"100%", height:48, borderRadius:99, border:"none", cursor:busy?"default":"pointer", background:busy?C.line:`radial-gradient(circle at 30% 30%, ${C.butter}, ${ch.partner})`, color:C.ink, fontFamily:head, fontSize:14.5, fontWeight:500, marginBottom:2, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           {busy ? BUSY_STEPS[bstep] : (ai ? "Обновить мой разбор" : "Проанализировать мои сохранения")}
         </button>
-      )}
+        {!busy && (
+          <p style={{ fontSize:11, color:C.inkFaint, textAlign:"center", margin:"5px 0 10px" }}>
+            {ai && ai._at ? "Разбор от " + new Date(ai._at).toLocaleDateString("ru-RU", { day:"numeric", month:"long" }) + " · " : ""}
+            {quotaLeft > 0 ? ("осталось " + quotaLeft + " " + (quotaLeft===1?"разбор":"разбора") + " сегодня") : "лимит на сегодня исчерпан"}
+          </p>
+        )}
+      </>)}
       {err && !busy && (
         <div className="fade" style={{ borderRadius:14, padding:"12px 14px", margin:"0 0 16px", background:"#F6E3DC", border:"1px solid #E4B7A6" }}>
           <p style={{ fontSize:13, lineHeight:1.45, color:"#7A3B22", margin:0 }}>{err}</p>
