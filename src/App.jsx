@@ -83,12 +83,12 @@ const sgDataURI = (b)=> "data:"+(b.source.media_type||"image/jpeg")+";base64,"+b
 
 async function sgVisionAsk({ sys, shots, task, maxTokens }){
   const bodies = {
-    anthropic: ()=>({ model:"claude-sonnet-4-6", max_tokens:maxTokens, system:sys,
+    anthropic: ()=>({ model:"claude-sonnet-4-6", max_tokens:maxTokens, temperature:0.5, system:sys,
       messages:[{ role:"user", content:[
         ...shots.flatMap((b,i)=>[{ type:"text", text:"Фото "+(i+1)+":" }, b]),
         { type:"text", text:task },
       ]}] }),
-    openai: ()=>({ model:"claude-sonnet-4-6", max_tokens:maxTokens,
+    openai: ()=>({ model:"claude-sonnet-4-6", max_tokens:maxTokens, temperature:0.5,
       messages:[{ role:"system", content:sys }, { role:"user", content:[
         ...shots.flatMap((b,i)=>[{ type:"text", text:"Фото "+(i+1)+":" }, { type:"image_url", image_url:{ url:sgDataURI(b) } }]),
         { type:"text", text:task },
@@ -2282,12 +2282,19 @@ function Onboarding({ profile, setProfile, onDone }) {
 // ── SCREENS ───────────────────────────────────────────────────────
 function BeautifulDay({ ch }) {
   const today = sgToday();
-  const items = React.useMemo(()=> shuffleDay(DAY_BEAUTY, 13).slice(0,5), [today]);
+  const [mine, setMine] = React.useState(()=> sgStore.get("sg_my_actions", []));
+  // Первыми идут действия из разбора (глиф-звёздочка), дальше — обычные пункты дня
+  const items = React.useMemo(()=>{
+    const own = mine.map(t=>({ e:"✦", v:t, mine:true }));
+    const base = shuffleDay(DAY_BEAUTY, 13).filter(b=>!mine.includes(b.v));
+    return [...own, ...base].slice(0, Math.max(5, own.length + 3));
+  }, [today, mine]);
+  const removeMine = (t)=> setMine(prev=>{ const next=prev.filter(x=>x!==t); sgStore.set("sg_my_actions", next); return next; });
   const [done, setDone] = React.useState(()=> sgStore.get("sg_day_"+today, {}));
   const [burst, setBurst] = React.useState(false);
   React.useEffect(()=>{ setDone(sgStore.get("sg_day_"+today, {})); }, [today]);
-  const toggle = (i)=>{ const n={ ...done, [i]:!done[i] }; setDone(n); sgStore.set("sg_day_"+today, n); const c=items.filter((_,ix)=>n[ix]).length; if(c===items.length){ setBurst(true); sgTrack("day_complete"); setTimeout(()=>setBurst(false), 3600); } };
-  const count = items.filter((_,i)=>done[i]).length;
+  const toggle = (key)=>{ const n={ ...done, [key]:!done[key] }; setDone(n); sgStore.set("sg_day_"+today, n); const c=items.filter(it=>n[it.v]).length; if(c===items.length){ setBurst(true); sgTrack("day_complete"); setTimeout(()=>setBurst(false), 3600); } };
+  const count = items.filter(it=>done[it.v]).length;
   const all = count===items.length;
   const dstr = new Date().toLocaleDateString("ru-RU",{ day:"numeric", month:"long" });
   return (
@@ -2305,13 +2312,19 @@ function BeautifulDay({ ch }) {
       </div>
       <div style={{ padding:"2px 10px 8px" }}>
         {items.map((it,i)=>{
-          const on = !!done[i];
+          const on = !!done[it.v];
           return (
-            <button key={i} onClick={()=>toggle(i)} className={"tapPop fade st"+((i%6)+1)} style={{ width:"100%", display:"flex", alignItems:"center", gap:12, padding:"11px 10px", border:"none", borderBottom:i<items.length-1?`1px solid ${C.line}`:"none", background:"transparent", cursor:"pointer", textAlign:"left" }}>
+            <div key={it.v} style={{ display:"flex", alignItems:"center", borderBottom:i<items.length-1?`1px solid ${C.line}`:"none" }}>
+            <button onClick={()=>toggle(it.v)} className={"tapPop fade st"+((i%6)+1)} style={{ flex:1, display:"flex", alignItems:"center", gap:12, padding:"11px 10px", border:"none", background:"transparent", cursor:"pointer", textAlign:"left" }}>
               <span style={{ flexShrink:0, width:26, height:26, borderRadius:99, display:"flex", alignItems:"center", justifyContent:"center", border:on?"none":`1.6px solid ${ch.partner}`, background:on?ch.partner:"transparent", transition:"all .15s" }}>{on && <Check size={15} strokeWidth={2.6} color={C.cream}/>}</span>
               <span style={{ flexShrink:0, opacity:on?0.45:1, transition:"opacity .15s" }}><SGBadge em={it.e} partner={ch.partner} size={34}/></span>
-              <span style={{ flex:1, fontSize:14.5, lineHeight:1.4, color:on?C.inkFaint:C.ink, textDecoration:on?"line-through":"none" }}>{it.v}</span>
+              <span style={{ flex:1, fontSize:14.5, lineHeight:1.4, color:on?C.inkFaint:C.ink, textDecoration:on?"line-through":"none" }}>
+                {it.v}
+                {it.mine && <span style={{ display:"block", fontFamily:head, fontSize:9, letterSpacing:"0.1em", textTransform:"uppercase", color:ch.partner, marginTop:2 }}>из твоего разбора</span>}
+              </span>
             </button>
+            {it.mine && <button onClick={()=>removeMine(it.v)} aria-label="Убрать" className="tapPop" style={{ flexShrink:0, width:28, height:28, marginRight:6, borderRadius:99, border:"none", background:"transparent", cursor:"pointer", color:C.inkFaint, fontSize:15, lineHeight:1 }}>×</button>}
+            </div>
           );
         })}
       </div>
@@ -3838,6 +3851,12 @@ function PinReality({ ch, dna, onClose }) {
   const todayKey = ()=> "sg_an_" + new Date().toISOString().slice(0,10);
   const anUsed = ()=> Number(sgStore.get(todayKey(), 0)) || 0;
   const [quotaLeft, setQuotaLeft] = useState(()=> Math.max(0, AN_LIMIT - anUsed()));
+  // Действия из разбора можно добавить в «Красивый день» — там они появятся первыми пунктами
+  const [myDay, setMyDay] = useState(()=> sgStore.get("sg_my_actions", []));
+  const toggleMyDay = (a)=> setMyDay(prev=>{
+    const next = prev.includes(a) ? prev.filter(x=>x!==a) : [...prev, a].slice(-4); // не больше четырёх, свежие вытесняют старые
+    sgStore.set("sg_my_actions", next); return next;
+  });
   const BUSY_STEPS = ["Рассматриваю каждое фото по отдельности…","Записываю, что буквально на кадрах…","Собираю палитру и настроение…","Ищу твоего эстетического двойника…","Подбираю точные шаги и ритуалы…","Дописываю тёплое письмо тебе…"];
   const [bstep, setBstep] = useState(0);
   useEffect(()=>{ if(!busy) return; setBstep(0); const t=setInterval(()=>setBstep(b=>(b+1)%BUSY_STEPS.length), 2200); return ()=>clearInterval(t); },[busy]);
@@ -3870,7 +3889,7 @@ function PinReality({ ch, dna, onClose }) {
   const analyze = async () => {
     if (!imgs.length || busy) return; setBusy(true); setErr(null);
     const sys = "Ты — Slow Glow: тёплый голос о медленной красивой жизни и предельно внимательный визуальный аналитик. ЖЕЛЕЗНОЕ ПРАВИЛО №1: ты описываешь и анализируешь ТОЛЬКО то, что реально изображено на присланных фото. Сначала рассматриваешь каждый кадр по отдельности и честно фиксируешь его буквальное содержимое: место, предметы, людей, действие, свет, цвета. Ты НИКОГДА не додумываешь типовые «эстетичные» детали — свечи, книги, цветы, кофе, лён, дерево — если их нет на фото. Если на фото спорт (теннис, корт, ракетки), путешествия, город, еда, животные или что-то неожиданное — весь разбор строится именно вокруг этого, а не вокруг абстрактной «медленной жизни». По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи и ритуалы, без воды и абстракций. Покупки советуешь только для дома и интерьера; одежду покупать не советуешь никогда — только собирать образы из её гардероба. Никогда не называешь бренды, марки и магазины — вещи описываешь по типу, цвету и материалу; на актуальные тренды ссылаться можно, но без имён брендов. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».";
-    const task = 'Это мои сохранённые картинки (пины) желаемой эстетики жизни, каждая подписана номером. ШАГ 1 — рассмотри КАЖДОЕ фото по отдельности и для каждого честно зафиксируй, что на нём буквально изображено (место, предметы, люди, действие, цвета). ШАГ 2 — построй разбор СТРОГО на этих наблюдениях: каждый вывод должен опираться на конкретные фото, ничего не выдумывай. Если фото разнородные (например, спорт + интерьер + путешествия) — отрази ВСЕ темы, не сводя всё к одной. Верни ТОЛЬКО валидный JSON без markdown, по-русски: {"seen":[по одной строке на КАЖДОЕ фото в исходном порядке, формат «Фото N: что буквально изображено», коротко и без домыслов],"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни минимум три детали ПРЯМО с картинок (то, что ты записала в seen)","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника, отражающее именно ЕЁ фото (если на фото спорт — двойник спортивный, если море — морской), максимум 3-4 слова: например «Уимблдонское утро», «Тосканский полдень», «Парижское утро 70-х»","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[до 6 конкретных повторяющихся образов, объектов или цветов; КАЖДЫЙ обязан реально присутствовать хотя бы на одном фото из seen — не добавляй ни одного, которого нет на кадрах; если фото мало, верни меньше пунктов],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий, выведенных ИЗ ЭТИХ фото — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например, если на фото теннис: «Забронируй корт на час в субботу утром и возьми с собой воду и полотенце»); никаких общих фраз и ничего, что не связано с фото],"identity":{"who":"3-4 предложения — какая это личность по её фото: её характер, ритм, отношение к себе; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, подобранных под темы ЕЁ фото, каждая с указанием времени],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"outfits":[3 готовых образа под её эстетику С ФОТО, собранных из базовых вещей её вероятного гардероба — каждый одним предложением: типы вещей, цвета, материалы; БЕЗ единого названия бренда],"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эстетику её фото (если на фото спорт — например, красивое хранение инвентаря, корзина для формы); каждая с материалом или цветом; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов под темы её фото, каждый одной строкой в формате «Название — суть»],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни, судя по фото],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня, связанный с тем, что на фото","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках РЕАЛЬНО видно что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути; если совпадений нет — строго null, не притягивай"') : "null")+'}. САМОПРОВЕРКА перед ответом: пройдись по каждому пункту patterns и read — если чего-то нет в seen, убери или замени. Пиши предметно. Тон тёплый и личный, во втором лице. Без оценок, без слова «должна». Никогда не советуй покупать одежду, обувь или косметику. Никогда не называй бренды. Верни строго один JSON-объект.';
+    const task = 'Это мои сохранённые картинки (пины) желаемой эстетики жизни, каждая подписана номером. ШАГ 1 — рассмотри КАЖДОЕ фото по отдельности и для каждого честно зафиксируй, что на нём буквально изображено (место, предметы, люди, действие, цвета). ШАГ 2 — построй разбор СТРОГО на этих наблюдениях: каждый вывод должен опираться на конкретные фото, ничего не выдумывай. Если фото разнородные (например, спорт + интерьер + путешествия) — отрази ВСЕ темы, не сводя всё к одной. Верни ТОЛЬКО валидный JSON без markdown, по-русски: {"seen":[по одной строке на КАЖДОЕ фото в исходном порядке, формат «Фото N: …», 10-16 слов на кадр: место, 2-3 КОНКРЕТНЫХ предмета или объекта, действие, свет и цвета. ЗАПРЕЩЕНО отделываться настроенческими ярлыками без предмета — «тёплый вечер», «мягкий свет», «уютная атмосфера», «эстетичное фото» сами по себе не являются описанием; такие слова допустимы только рядом с конкретикой. ПЛОХО: «Фото 2: мягкий тёплый вечер». ХОРОШО: «Фото 2: терраса над морем на закате, плетёные кресла, бокал с лимонадом, розово-золотой свет»],"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни минимум три детали ПРЯМО с картинок (то, что ты записала в seen)","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника, отражающее именно ЕЁ фото (если на фото спорт — двойник спортивный, если море — морской), максимум 3-4 слова. Оно ОБЯЗАНО опираться на конкретику кадров: место, эпоху, занятие или деталь. Хорошие примеры: «Уимблдонское утро», «Дорога к тихой бухте», «Парижское утро 70-х», «Библиотека у моря». ЗАПРЕЩЕНЫ безликие сочетания из настроения и времени суток: «Тёплый вечер», «Мягкое утро», «Уютный вечер», «Нежное лето» — это не имена, а заглушки","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[до 6 конкретных повторяющихся образов, объектов или цветов; КАЖДЫЙ обязан реально присутствовать хотя бы на одном фото из seen — не добавляй ни одного, которого нет на кадрах; если фото мало, верни меньше пунктов],"seeking":[5 чувств или ценностей за этими картинками],"actions":[8 ТОЧНЫХ конкретных действий, выведенных ИЗ ЭТИХ фото — каждое начинается с глагола и ОБЯЗАТЕЛЬНО содержит деталь исполнения: где именно, когда или сколько минут, что понадобится (например, если на фото теннис: «Забронируй корт на час в субботу утром и возьми с собой воду и полотенце»); никаких общих фраз и ничего, что не связано с фото],"identity":{"who":"3-4 предложения — какая это личность по её фото: её характер, ритм, отношение к себе; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, подобранных под темы ЕЁ фото, каждая с указанием времени],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"outfits":[3 готовых образа под её эстетику С ФОТО, собранных из базовых вещей её вероятного гардероба — каждый одним предложением: типы вещей, цвета, материалы; БЕЗ единого названия бренда],"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эстетику её фото (если на фото спорт — например, красивое хранение инвентаря, корзина для формы); каждая с материалом или цветом; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов под темы её фото, каждый одной строкой в формате «Название — суть»],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни, судя по фото],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня, связанный с тем, что на фото","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках РЕАЛЬНО видно что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути; если совпадений нет — строго null, не притягивай"') : "null")+'}. САМОПРОВЕРКА перед ответом: пройдись по каждому пункту patterns и read — если чего-то нет в seen, убери или замени. Пиши предметно. Тон тёплый и личный, во втором лице. Без оценок, без слова «должна». Никогда не советуй покупать одежду, обувь или косметику. Никогда не называй бренды. Верни строго один JSON-объект.';
     let ok = false;
     let reason = "";   // ← настоящая причина отказа, чтобы её было видно
     try {
@@ -4019,12 +4038,17 @@ function PinReality({ ch, dna, onClose }) {
       {D.actions && D.actions.length>0 && (<>
         <Label>Точные действия под твои пины</Label>
         <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 10px" }}>Конкретные шаги, чтобы прожить эту эстетику уже на этой неделе.</p>
-        <div style={{ marginBottom:22 }}>{D.actions.map((a,i)=>(
-          <div key={i} className={"fade st"+((i%6)+1)} style={{ display:"flex", gap:12, marginBottom:10 }}>
+        <div style={{ marginBottom:22 }}>{D.actions.map((a,i)=>{
+          const inDay = myDay.includes(a);
+          return (
+          <div key={i} className={"fade st"+((i%6)+1)} style={{ display:"flex", gap:12, marginBottom:10, alignItems:"flex-start" }}>
             <div style={{ width:24, height:24, borderRadius:99, flexShrink:0, background:`radial-gradient(circle at 40% 35%, ${C.butter}, ${ch.partner})`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:serif, fontStyle:"italic", fontSize:13, color:C.ink }}>{i+1}</div>
-            <p style={{ fontSize:14, lineHeight:1.45, color:C.ink, margin:"2px 0 0" }}>{a}</p>
+            <p style={{ flex:1, fontSize:14, lineHeight:1.45, color:C.ink, margin:"2px 0 0" }}>{a}</p>
+            <button onClick={()=>toggleMyDay(a)} className="tapPop" title={inDay?"Убрать из моего дня":"Добавить в мой день"} style={{ flexShrink:0, height:26, borderRadius:99, padding:"0 10px", border:`1px solid ${inDay?ch.partner:C.line}`, background:inDay?`${ch.partner}22`:"transparent", cursor:"pointer", fontFamily:head, fontSize:10.5, color:inDay?ch.partner:C.inkSoft, display:"flex", alignItems:"center", gap:4 }}>
+              {inDay ? <><Check size={11} strokeWidth={2.4}/>в дне</> : "+ в день"}
+            </button>
           </div>
-        ))}</div>
+        );})}</div>
       </>)}
 
       {D.identity && (D.identity.who || (D.identity.habits && D.identity.habits.length>0)) && (
