@@ -813,12 +813,12 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
   // В ленту берём только фотографии, у которых есть своя тема:
   // так подпись всегда описывает то, что действительно на кадре.
   const [flt, setFlt] = useState("");   // выбранная тема; пустая строка = все
+  // Поток — текстовые карточки-идеи на фирменных градиентах. Никаких фото:
+  // нечему не соответствовать и нечему не загрузиться.
   const POOL = React.useMemo(()=> rotate(
-    Object.entries(IMG).filter(([k,u])=>{
-      if (typeof u!=="string" || /^mind_/.test(k)) return false;
-      const t = sgFeedTopic(k);
-      return t && (!flt || t.name===flt);
-    }),
+    SG_FEED_TOPICS
+      .filter(t=> !flt || t.name===flt)
+      .flatMap(t=> t.caps.map(c=> ({ label:t.name, text:c }))),
     1
   ), [rotate, flt]);
   const TOPIC_NAMES = React.useMemo(()=> {
@@ -843,60 +843,55 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
     lastTap.current[id] = now;
   };
   const card = (idx)=>{
-    const kind = flt ? "photo" : (idx===1 ? "day" : (idx%9===4 ? "quote" : (idx%9===7 ? "q" : "photo")));
     if (!POOL.length) return null;
-    if (kind==="quote"){
-      const qt = QPOOL[idx % QPOOL.length];
-      // Цитата на чистом чернильном градиенте — никакой зависимости от фото
+    const kind = flt ? "idea" : (idx===1 ? "day" : (idx%9===4 ? "quote" : (idx%9===7 ? "q" : "idea")));
+
+    // Шесть градиентных пресетов — чередуются, чтобы стена дышала
+    const P = ch.partner;
+    const looks = [
+      { bg:`linear-gradient(150deg, ${C.butter} 0%, ${P} 115%)`,                 ink:C.ink,     lab:"rgba(26,26,26,0.5)",  bd:`${P}44` },
+      { bg:`linear-gradient(160deg, #262626 0%, #3B342C 70%, ${P}66 130%)`,      ink:"#FAF8F1", lab:C.butter,               bd:"rgba(26,26,26,0.2)" },
+      { bg:`linear-gradient(145deg, #FFFDF6 0%, ${C.butter}55 100%)`,            ink:C.ink,     lab:P,                      bd:C.line },
+      { bg:`linear-gradient(155deg, ${P}2E 0%, ${C.butter}66 60%, #FFF 130%)`,   ink:C.ink,     lab:"rgba(26,26,26,0.45)",  bd:`${P}33` },
+      { bg:`linear-gradient(150deg, ${C.seaMist||"#CBD6DE"} 0%, ${C.sage||"#C2D3AC"}AA 120%)`, ink:C.ink, lab:"rgba(26,26,26,0.5)", bd:"rgba(26,26,26,0.08)" },
+      { bg:`linear-gradient(160deg, ${P} 0%, ${C.butter} 130%)`,                 ink:C.ink,     lab:"rgba(26,26,26,0.55)",  bd:`${P}66` },
+    ];
+
+    if (kind==="quote" || kind==="q"){
+      const txt = kind==="quote" ? QPOOL[idx % QPOOL.length] : QSPOOL[idx % QSPOOL.length];
+      const L = kind==="quote" ? looks[1] : looks[5];
       return (
-        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", minHeight:172, position:"relative", background:`linear-gradient(155deg, #232323 0%, #3B342C 58%, ${ch.partner}55 130%)`, border:"1px solid rgba(26,26,26,0.2)" }}>
-          <div style={{ position:"absolute", inset:0, background:`radial-gradient(circle at 85% 0%, ${C.butter}2E, transparent 55%)` }}/>
-          <div style={{ position:"relative", padding:"20px 16px", display:"flex", flexDirection:"column", justifyContent:"flex-end", minHeight:172 }}>
-            <span style={{ color:C.butter, fontSize:15 }}>✦</span>
-            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16.5, lineHeight:1.38, color:"#FAF8F1", margin:"7px 0 0" }}>{qt}</p>
+        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", position:"relative", background:L.bg, border:`1px solid ${L.bd}` }}>
+          <div style={{ position:"absolute", inset:0, background:`radial-gradient(circle at 85% 0%, rgba(255,255,255,0.28), transparent 55%)` }}/>
+          <div style={{ position:"relative", padding:"20px 16px 17px", display:"flex", flexDirection:"column", justifyContent:"flex-end", minHeight:150 }}>
+            <div style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:L.lab }}>{kind==="quote" ? "✦ Slow Glow" : "Вопрос себе"}</div>
+            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16.5, lineHeight:1.38, color:L.ink, margin:"7px 0 0" }}>{txt}</p>
           </div>
         </div>
       );
     }
-    if (kind==="q"){
-      const qq = QSPOOL[idx % QSPOOL.length];
-      // Вопрос себе — на светлом фирменном градиенте главы
-      return (
-        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", minHeight:160, position:"relative", background:`linear-gradient(150deg, ${C.butter} 0%, ${ch.partner}99 70%, ${ch.partner} 120%)`, border:`1px solid ${ch.partner}55` }}>
-          <div style={{ position:"absolute", inset:0, background:"radial-gradient(circle at 15% 100%, rgba(255,255,255,0.5), transparent 55%)" }}/>
-          <div style={{ position:"relative", padding:"18px 16px", display:"flex", flexDirection:"column", justifyContent:"flex-end", minHeight:160 }}>
-            <div style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(26,26,26,0.55)" }}>Вопрос себе</div>
-            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.38, color:C.ink, margin:"6px 0 0" }}>{qq}</p>
-          </div>
-        </div>
-      );
-    }
+
     const special = kind==="day";
-    // Сколько спецкарточек (пин дня + цитаты) стояло до этой позиции —
-    // вычитаем, чтобы фотографии шли по пулу подряд, без пропусков и повторов.
     const nSpec = flt ? 0 : (idx>1?1:0) + Math.floor((idx+4)/9) + Math.floor((idx+1)/9);
-    const [imgKey, url] = POOL[(special ? 0 : Math.max(0, idx - nSpec)) % POOL.length];
-    const topic = sgFeedTopic(imgKey);
-    const cap = special
-      ? "Пин дня · только сегодня"
-      : topic.caps[(idx + doy) % topic.caps.length];   // подпись из темы этого фото
-    const h = special ? 236 : 168 + ((idx*37) % 132);
-    const id = "feed_" + (special ? "day_"+doy : imgKey + "_" + ((idx + doy) % topic.caps.length));
-    const item = { id, kind:"поток", title:cap, t:idx%6, url };
+    const it = POOL[(special ? 0 : Math.max(0, idx - nSpec)) % POOL.length];
+    const L = looks[(idx*7+3) % looks.length];
+    const minH = special ? 200 : 132 + ((idx*37) % 96);
+    const id = "feed_" + (special ? "day_"+doy : (it.label + "_" + it.text.slice(0,24)));
+    const item = { id, kind:"поток", title:it.text, t:idx%6, url:"" };
     const isSaved = saved.some(x=>x.id===id);
     return (
-      <div key={idx} onClick={()=>tap(id, item)} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", position:"relative", border: special ? `1.5px solid ${ch.partner}` : `1px solid ${C.line}`, background:"#fff", boxShadow: special ? `0 12px 28px -18px ${ch.partner}` : "none" }}>
-        <Photo t={idx%6} url={url} h={h} radius={0}>
-          <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 45%, rgba(26,26,26,0.55) 100%)" }}/>
-        </Photo>
-        {special && <span className="pulseSoft" style={{ position:"absolute", top:8, left:8, background:"rgba(250,248,241,0.95)", borderRadius:99, padding:"4px 10px", fontFamily:head, fontSize:9, letterSpacing:"0.12em", color:C.ink }}>✦ ПИН ДНЯ</span>}
-        <button onClick={(e)=>{ e.stopPropagation(); doSave(item); }} aria-label="Сохранить" className="tapPop" style={{ position:"absolute", top:8, right:8, width:32, height:32, borderRadius:99, border:"none", cursor:"pointer", background:"rgba(250,248,241,0.9)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <Heart size={15} strokeWidth={1.9} color={isSaved?ch.partner:C.inkSoft} fill={isSaved?ch.partner:"none"}/>
-        </button>
-        {burst===id && <div className="heartPop" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}><Heart size={64} strokeWidth={0} color={"#fff"} fill={ch.partner}/></div>}
-        <div style={{ position:"absolute", left:10, right:10, bottom:9 }}>
-          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:13.5, lineHeight:1.3, color:"#fff", margin:0, textShadow:"0 1px 8px rgba(26,26,26,0.6)" }}>{cap}</p>
+      <div key={idx} onClick={()=>tap(id, item)} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", position:"relative", cursor:"pointer", background:L.bg, border: special ? `1.5px solid ${P}` : `1px solid ${L.bd}`, boxShadow: special ? `0 12px 28px -18px ${P}` : "none" }}>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(circle at 12% 100%, rgba(255,255,255,0.3), transparent 52%)" }}/>
+        <div style={{ position:"relative", padding:"16px 15px 15px", display:"flex", flexDirection:"column", justifyContent:"space-between", minHeight:minH }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+            <span style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:L.lab }}>{special ? "✦ Идея дня" : it.label}</span>
+            <button onClick={(e)=>{ e.stopPropagation(); doSave(item); }} aria-label="Сохранить" className="tapPop" style={{ width:30, height:30, borderRadius:99, border:"none", cursor:"pointer", background:"rgba(255,255,255,0.75)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <Heart size={14} strokeWidth={1.9} color={isSaved?P:C.inkSoft} fill={isSaved?P:"none"}/>
+            </button>
+          </div>
+          <p style={{ fontFamily:serif, fontStyle:"italic", fontSize: special?18:15.5, lineHeight:1.4, color:L.ink, margin:"12px 0 0" }}>{it.text}</p>
         </div>
+        {burst===id && <div className="heartPop" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}><Heart size={64} strokeWidth={0} color={"#fff"} fill={P}/></div>}
       </div>
     );
   };
@@ -1229,7 +1224,7 @@ function DailyEnvelope({ ch, bump }){
 }
 
 /* ── Вкладка «Инструменты»: все возможности приложения в одном месте ────────── */
-function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel, openLang, openSport, openPets, openMind, openScan, openPin }){
+function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel, openLang, openSport, openPets, openMind, openScan, openPin, openRecipes }){
   const tint = [ `${C.sage}66`, `${C.butter}55`, `${C.seaMist}66`, `${C.sand}88` ];
   const T = [
     { k:"Карта и досуг", d:"Эстетичные места рядом", go:onPlaces, g:"mappin" },
@@ -1238,7 +1233,8 @@ function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel,
     { k:"Путешествия", d:"Куда поехать под эстетику", go:openTravel, g:"plane", plus:true },
     { k:"Языки", d:"Красивые уроки каждый день", go:openLang, g:"letter" },
     { k:"Спорт", d:"Мягкое движение и корты", go:openSport, g:"racket" },
-    { k:"Рецепты", d:"Ужин из того, что есть", go:openScan, g:"plate", plus:true },
+    { k:"Рецепты", d:"Подборка дня и ужин из того, что есть", go:openRecipes, g:"plate" },
+    { k:"Подбор места", d:"Место в городе под настроение", go:openScan, g:"sun", plus:true },
     { k:"Идеи для ума", d:"Обогащение · тема дня", go:openMind, g:"book" },
     { k:"Питомцы", d:"Забота и прогулки", go:openPets, g:"paw" },
   ];
@@ -1865,9 +1861,23 @@ function SlowGlowAppMain() {
             ]}]
           })});
           const j = await r.json();
-          const t = (j.content||[]).map(b=>b.text||"").join("").trim().replace(/^[«"']+|[»"'.]+$/g,"");
-          const bad = /^(уютн|т[её]пл|мягк|нежн|атмосферн)\w*\s/i.test(t);
-          setMoments(m=>m.map(x=> x.id===id ? { ...x, cap: (t && t.length<=70 && !bad) ? t : fallback } : x));
+          let t = (j.content||[]).map(b=>b.text||"").join("").trim().replace(/^[«"']+|[»"'.]+$/g,"");
+          const banal = (x)=> /(уютн|т[её]пл|мягк|нежн|атмосферн|спокойн)\w*\s+(вечер|утро|день|момент|свет|настроение|атмосфера)/i.test(x) || x.split(/\s+/).length<2;
+          if (!t || banal(t)) {
+            // Вторая попытка — с прямой критикой: модель обязана назвать предметы
+            const r2 = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify({
+              model:"claude-sonnet-4-6", max_tokens:60, temperature:0.3,
+              system:"Ты подписываешь фотографии для личного дневника. Ты обязана называть конкретные предметы, места и действия с кадра.",
+              messages:[{ role:"user", content:[
+                { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 } },
+                { type:"text", text:"Твоя прошлая подпись была пустым ярлыком («"+(t||"…")+"»). Посмотри на фото внимательно и перечисли, что РЕАЛЬНО на нём: главный предмет или место, деталь, свет. Собери из этого одну строку 3-6 слов. Пример: «Круассан и эспрессо на мраморе». Только строка, без кавычек." }
+              ]}]
+            })});
+            const j2 = await r2.json();
+            const t2 = (j2.content||[]).map(b=>b.text||"").join("").trim().replace(/^[«"']+|[»"'.]+$/g,"");
+            if (t2 && !banal(t2)) t = t2;
+          }
+          setMoments(m=>m.map(x=> x.id===id ? { ...x, cap: (t && t.length<=70 && !banal(t)) ? t : fallback } : x));
         } catch(e){
           setMoments(m=>m.map(x=> x.id===id ? { ...x, cap: fallback } : x));
         }
@@ -2040,7 +2050,7 @@ function SlowGlowAppMain() {
                 {tab==="journal" && <Journal_ moments={moments} />}
                 {tab==="me" && <Me_ ch={ch} chapterId={chapterId} boards={boards} earlyAccess={earlyAccess} setChapterId={setChapterId} setPin={setPinOpen} setWorld={setWorld} premium={premium} grantTrial={grantTrial} trialActive={trialActive} trialDaysLeft={trialDaysLeft} openPlus={()=>setPaywall("plus")} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openStylist={()=>premium?setStylist(true):setPaywall("stylist")} openScan={()=>premium?setScan(true):setPaywall("scan")} />}
                 {tab==="collections" && <Collections_ ch={ch} onOpen={(c)=>setCollection(c)} />}
-                {tab==="tools" && <Tools_ ch={ch} premium={premium} onPlaces={()=>setTab("places")} onCollections={()=>setTab("collections")} openStylist={()=>premium?setStylist(true):setPaywall("stylist")} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openLang={()=>setLang(true)} openSport={()=>setSport(true)} openPets={()=>setPets(true)} openMind={()=>setMind(true)} openScan={()=>premium?setScan(true):setPaywall("scan")} openPin={()=>setPinOpen(true)} />}
+                {tab==="tools" && <Tools_ ch={ch} premium={premium} onPlaces={()=>setTab("places")} onCollections={()=>setTab("collections")} openStylist={()=>premium?setStylist(true):setPaywall("stylist")} openTravel={()=>premium?setTravel(true):setPaywall("travel")} openLang={()=>setLang(true)} openSport={()=>setSport(true)} openPets={()=>setPets(true)} openMind={()=>setMind(true)} openScan={()=>premium?setScan(true):setPaywall("scan")} openPin={()=>setPinOpen(true)} openRecipes={()=>setRubric("recipes")} />}
               </div>
             </div>
 
@@ -2305,6 +2315,17 @@ function Onboarding({ profile, setProfile, onDone }) {
 }
 
 // ── SCREENS ───────────────────────────────────────────────────────
+function ChecklistRow({ text, ch, storeKey }){
+  const [on, setOn] = React.useState(()=> !!(sgStore.get(storeKey, {})[text]));
+  const flip = ()=>{ const st = sgStore.get(storeKey, {}); st[text] = !st[text]; sgStore.set(storeKey, st); setOn(!!st[text]); };
+  return (
+    <button onClick={flip} className="tapPop" style={{ width:"100%", display:"flex", alignItems:"flex-start", gap:11, padding:"8px 2px", border:"none", background:"transparent", cursor:"pointer", textAlign:"left" }}>
+      <span style={{ flexShrink:0, width:22, height:22, borderRadius:7, marginTop:1, display:"flex", alignItems:"center", justifyContent:"center", border:on?"none":`1.6px solid ${ch.partner}`, background:on?`linear-gradient(135deg, ${C.butter}, ${ch.partner})`:"transparent", transition:"all .15s" }}>{on && <Check size={13} strokeWidth={2.8} color={C.ink}/>}</span>
+      <span style={{ flex:1, fontSize:14, lineHeight:1.42, color:on?C.inkFaint:C.ink, textDecoration:on?"line-through":"none" }}>{text}</span>
+    </button>
+  );
+}
+
 function BeautifulDay({ ch }) {
   const today = sgToday();
   const [mine, setMine] = React.useState(()=> sgStore.get("sg_my_actions", []));
@@ -3620,10 +3641,10 @@ function RecipeView({ data, onClose, setDetail }) {
         <button onClick={aiCook} disabled={!fridge.length} style={{ width:"100%", border:"none", borderRadius:14, padding:"13px", cursor:fridge.length?"pointer":"default", fontFamily:head, fontSize:12, letterSpacing:"0.08em", textTransform:"uppercase", color:fridge.length?"#fff":C.inkFaint, background:fridge.length?`linear-gradient(135deg, ${C.butter}, ${partner})`:"rgba(26,26,26,0.06)" }}>✦ Подобрать рецепт из этого</button>
         {aiErr && <p style={{ fontSize:12.5, color:"#B5826A", margin:"10px 0 0", lineHeight:1.4 }}>{aiErr}</p>}
       </div>
-      {(() => { const td = pick(RECIPES, 10, seedToday); return (
+      {(() => { const td = pick(RECIPES, 5, seedToday); /* пять в день, завтра — новые */ return (
         <div style={{ marginBottom:8 }}>
           <Label>Сегодня готовим</Label>
-          <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 4px" }}>10 рецептов под твою эстетику — обновляются каждый день ✦</p>
+          <p style={{ fontSize:12.5, color:C.inkFaint, margin:"4px 0 4px" }}>Пять рецептов под твою эстетику — завтра будут новые ✦</p>
           {td.map((r,i)=>Card(r,i,"t"))}
         </div>
       ); })()}
@@ -4078,6 +4099,24 @@ function PinReality({ ch, dna, onClose }) {
           </div>
         );})}</div>
       </>)}
+
+      {D.actions && D.actions.length>0 && (()=>{
+        const five = D.actions.slice(0,5);
+        const ck = sgStore.get("sg_dream_ck_"+sgToday(), {});
+        return (
+          <div className="fade" style={{ position:"relative", borderRadius:20, overflow:"hidden", marginBottom:20, border:`1px solid ${ch.partner}55`, background:`linear-gradient(155deg, ${C.butter}44 0%, #FFFDF6 55%, ${ch.partner}22 130%)` }}>
+            <div aria-hidden="true" style={{ position:"absolute", left:0, right:0, top:0, height:4, background:`linear-gradient(90deg, ${C.butter}, ${ch.partner}, ${C.butter})` }}/>
+            <div style={{ padding:"18px 17px 15px" }}>
+              <Label color={ch.partner}>Из сохранений — в жизнь</Label>
+              <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.45, color:C.ink, margin:"7px 0 12px" }}>Чтобы жить в этой эстетике, не нужны большие перемены. Начни с пяти шагов — сегодня:</p>
+              {five.map((a,i)=>(
+                <ChecklistRow key={i} text={a} ch={ch} storeKey={"sg_dream_ck_"+sgToday()} />
+              ))}
+              <p style={{ fontSize:11, color:C.inkFaint, margin:"10px 0 0" }}>Slow Glow помогает не сохранять вдохновение, а превращать его в повседневность ✦</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {D.identity && (D.identity.who || (D.identity.habits && D.identity.habits.length>0)) && (
       <Fold ch={ch} icon="✨" title="Как стать этой женщиной" sub="портрет, привычки по 10–15 минут и установки">
