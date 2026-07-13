@@ -3068,7 +3068,38 @@ function Me_({ ch, chapterId, setChapterId, setPin, setWorld, premium, earlyAcce
           </button>
         ); })}
       </div>
-      <div style={{ textAlign:"center", padding:"28px 0 6px", fontFamily:head, fontSize:11, letterSpacing:"0.3em", color:C.inkFaint }}>LIVE BEAUTIFULLY</div>
+      <PrivacyBlock ch={ch} />
+      <div style={{ textAlign:"center", padding:"18px 0 6px", fontFamily:head, fontSize:11, letterSpacing:"0.3em", color:C.inkFaint }}>LIVE BEAUTIFULLY</div>
+    </div>
+  );
+}
+
+/* ── Политика конфиденциальности: ссылка и встроенный текст ── */
+function PrivacyBlock({ ch }){
+  const [open, setOpen] = React.useState(false);
+  const P = ({children})=> <p style={{ fontSize:13.5, lineHeight:1.55, color:C.inkSoft, margin:"0 0 12px" }}>{children}</p>;
+  const H = ({children})=> <p style={{ fontFamily:head, fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:C.ink, margin:"18px 0 7px", fontWeight:600 }}>{children}</p>;
+  return (
+    <div style={{ marginTop:14 }}>
+      <button onClick={()=>setOpen(o=>!o)} style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.55)", borderRadius:16, padding:"14px 16px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ fontFamily:head, fontSize:13, color:C.ink }}>Политика конфиденциальности</span>
+        <span style={{ color:C.inkFaint, fontSize:13 }}>{open?"−":"+"}</span>
+      </button>
+      {open && (
+        <div className="fade" style={{ border:`1px solid ${C.line}`, borderTop:"none", borderRadius:"0 0 16px 16px", background:"rgba(255,255,255,0.7)", padding:"16px 16px 14px", margin:"0 0 4px" }}>
+          <P>Slow Glow — личный проект, и я отношусь к твоим данным так, как хотела бы, чтобы относились к моим. Коротко и честно о том, что происходит с информацией.</P>
+          <H>Что хранится и где</H>
+          <P>Всё, что ты вводишь и отмечаешь — имя, город, настройки, сохранённые идеи, дневник, галочки дня, — живёт только в памяти твоего браузера или телефона (localStorage). У приложения нет базы пользователей, серверных аккаунтов и паролей. Удалишь приложение или очистишь данные сайта — всё исчезнет безвозвратно, в том числе и для меня: я этих данных не вижу.</P>
+          <H>Что происходит с фотографиями</H>
+          <P>Когда ты запускаешь разбор сохранений или добавляешь фото в дневник, изображения отправляются через мой сервер модели искусственного интеллекта для анализа (запрос идёт через сервис-агрегатор GenAPI к модели OpenAI). Фотографии передаются только в момент анализа, не сохраняются на моём сервере и не используются для обучения моделей. Результат разбора хранится, как и всё остальное, только на твоём устройстве.</P>
+          <H>Статистика</H>
+          <P>Приложение использует Яндекс.Метрику — она считает обезличенные события: сколько людей открыло приложение, какие разделы используются. Метрика не видит твоих фотографий, текстов и имени.</P>
+          <H>Чего здесь нет</H>
+          <P>Нет рекламы, нет продажи данных, нет передачи третьим лицам сверх описанного выше, нет скрытых трекеров. Приложение не запрашивает доступ к камере, контактам или геолокации без твоего явного действия.</P>
+          <H>Вопросы</H>
+          <P>Если что-то осталось неясным — напиши мне в Telegram-канале Slow Glow, отвечу лично. Обновлено: июль 2026.</P>
+        </div>
+      )}
     </div>
   );
 }
@@ -3792,6 +3823,84 @@ async function shareTwinCard(ch, twin, palette){
   }catch(e){}
 }
 
+/* Карточка разбора для сторис: имя двойника, палитра с реальных пинов,
+   три черты и подпись slow glow. 1080×1920, фирменный градиент. */
+async function shareDreamCard(ch, D){
+  try{
+    sgTrack("share_dream");
+    const cv=document.createElement("canvas"); const W=1080, H=1920; cv.width=W; cv.height=H; const x=cv.getContext("2d");
+    try{ await document.fonts.load("italic 400 96px 'Instrument Serif'"); await document.fonts.load("400 30px Satoshi"); await document.fonts.ready; }catch(e){}
+
+    // фон: крем → масло → партнёрский цвет главы
+    const g=x.createLinearGradient(0,0,W*0.6,H); g.addColorStop(0,"#FBF7EC"); g.addColorStop(0.5,C.butter); g.addColorStop(1,ch.partner);
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    // мягкие световые круги
+    x.fillStyle="rgba(255,255,255,0.34)"; x.beginPath(); x.arc(W*0.82,H*0.12,300,0,7); x.fill();
+    x.fillStyle="rgba(255,255,255,0.18)"; x.beginPath(); x.arc(W*0.1,H*0.92,340,0,7); x.fill();
+
+    const INK="#241f1a", M=104;
+    const wrap=(t,f,maxW)=>{ x.font=f; const out=[]; let line=""; for(const w of String(t).split(/\s+/)){ const test=line?line+" "+w:w; if(x.measureText(test).width>maxW && line){ out.push(line); line=w; } else line=test; } if(line) out.push(line); return out; };
+
+    // шапка-издание
+    x.fillStyle=INK; x.font="500 30px Satoshi"; x.textBaseline="top";
+    x.fillText("S L O W   G L O W", M, 128);
+    x.font="400 27px Satoshi"; x.fillStyle="rgba(36,31,26,0.62)";
+    x.fillText("РАЗБОР СОХРАНЕНИЙ", M, 176);
+    x.strokeStyle="rgba(36,31,26,0.5)"; x.lineWidth=2;
+    x.beginPath(); x.moveTo(M,236); x.lineTo(W-M,236); x.stroke();
+
+    // подводка + имя двойника
+    let y = 320;
+    x.fillStyle="rgba(36,31,26,0.66)"; x.font="400 32px Satoshi";
+    x.fillText("Твой эстетический двойник —", M, y); y += 76;
+    const name = (D.twin && D.twin.name) || "Тихая красивая жизнь";
+    for(const ln of wrap(name, "italic 400 118px 'Instrument Serif'", W-2*M)){ x.fillStyle=INK; x.font="italic 400 118px 'Instrument Serif'"; x.fillText(ln, M, y); y += 128; }
+    y += 26;
+
+    // суть двойника
+    if (D.twin && D.twin.essence){
+      x.fillStyle="rgba(36,31,26,0.82)";
+      for(const ln of wrap(D.twin.essence, "italic 400 44px 'Instrument Serif'", W-2*M).slice(0,4)){ x.font="italic 400 44px 'Instrument Serif'"; x.fillText(ln, M, y); y += 58; }
+      y += 40;
+    }
+
+    // палитра — прямо с её пинов
+    const pal = (D.palette||[]).slice(0,5);
+    if (pal.length){
+      const sw = (W-2*M-(pal.length-1)*18)/pal.length;
+      pal.forEach((c,i)=>{ x.fillStyle=c; const rx=M+i*(sw+18);
+        x.beginPath(); x.roundRect(rx, y, sw, 128, 22); x.fill();
+        x.strokeStyle="rgba(36,31,26,0.14)"; x.lineWidth=2; x.stroke(); });
+      y += 128+26;
+      x.fillStyle="rgba(36,31,26,0.55)"; x.font="400 26px Satoshi";
+      x.fillText("палитра — прямо с твоих сохранений", M, y); y += 80;
+    }
+
+    // три черты
+    const traits = (D.twin && D.twin.traits || []).slice(0,3);
+    if (traits.length){
+      for(const t of traits){
+        x.fillStyle=ch.partner; x.beginPath(); x.arc(M+10, y+22, 9, 0, 7); x.fill();
+        x.fillStyle=INK; x.font="400 40px Satoshi";
+        x.fillText(String(t), M+42, y); y += 66;
+      }
+    }
+
+    // низ: манифест + адрес
+    const byLine = H-210;
+    x.strokeStyle="rgba(36,31,26,0.4)"; x.beginPath(); x.moveTo(M,byLine-56); x.lineTo(W-M,byLine-56); x.stroke();
+    x.fillStyle="rgba(36,31,26,0.75)"; x.font="italic 400 38px 'Instrument Serif'";
+    x.fillText("замечать, а не успевать", M, byLine);
+    x.fillStyle=INK; x.font="500 34px Satoshi"; x.textAlign="right";
+    x.fillText("slow glow ✦", W-M, byLine); x.textAlign="left";
+
+    const b = await new Promise(r=>cv.toBlob(r,"image/png",0.95));
+    const f = new File([b],"slow-glow-разбор.png",{type:"image/png"});
+    if (navigator.canShare && navigator.canShare({files:[f]})) await navigator.share({ files:[f], text:"Мой разбор в Slow Glow ✦" });
+    else { const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download="slow-glow-разбор.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+  }catch(e){ console.error("[shareDreamCard]", e); }
+}
+
 async function shareStreakCard(ch, n, capt){
   try{
     sgTrack("share_streak", { n });
@@ -3877,7 +3986,7 @@ function PinReality({ ch, dna, onClose }) {
   const [err, setErr] = useState(null); // честная ошибка вместо «выдуманного» разбора
   // Лимит: не больше трёх разборов в день. Каждый разбор стоит реальных денег,
   // и без потолка один человек может опустошить баланс за вечер.
-  const AN_LIMIT = 3;
+  const AN_LIMIT = 2;   // два разбора в день на человека
   const todayKey = ()=> "sg_an_" + new Date().toISOString().slice(0,10);
   const anUsed = ()=> Number(sgStore.get(todayKey(), 0)) || 0;
   const [quotaLeft, setQuotaLeft] = useState(()=> Math.max(0, AN_LIMIT - anUsed()));
@@ -4117,6 +4226,12 @@ function PinReality({ ch, dna, onClose }) {
           </div>
         );
       })()}
+
+      {D.twin && D.twin.name && (
+        <button onClick={()=>shareDreamCard(ch, D)} className="tapPop" style={{ width:"100%", height:48, borderRadius:99, border:`1px solid ${ch.partner}`, background:"transparent", cursor:"pointer", color:C.ink, fontFamily:head, fontSize:13.5, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:20 }}>
+          <Send size={15} strokeWidth={1.8}/>Поделиться разбором — карточка для сторис
+        </button>
+      )}
 
       {D.identity && (D.identity.who || (D.identity.habits && D.identity.habits.length>0)) && (
       <Fold ch={ch} icon="✨" title="Как стать этой женщиной" sub="портрет, привычки по 10–15 минут и установки">

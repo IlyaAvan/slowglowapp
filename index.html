@@ -19,10 +19,17 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
   <!-- Шрифты приложения -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
-  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+  <!-- Шрифты лежат локально в /fonts — никаких внешних CDN, работает без интернета до Google -->
+  <link rel="preload" href="/fonts/InstrumentSerif-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/InstrumentSerif-Italic.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/Satoshi-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <style>
+    @font-face { font-family:'Instrument Serif'; src:url('/fonts/InstrumentSerif-Regular.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Instrument Serif'; src:url('/fonts/InstrumentSerif-Italic.woff2') format('woff2'); font-weight:400; font-style:italic; font-display:swap; }
+    @font-face { font-family:'Satoshi'; src:url('/fonts/Satoshi-Regular.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Satoshi'; src:url('/fonts/Satoshi-Medium.woff2') format('woff2'); font-weight:500; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Satoshi'; src:url('/fonts/Satoshi-Bold.woff2') format('woff2'); font-weight:700; font-style:normal; font-display:swap; }
+  </style>
 
   <!-- ═══════════════════════════════════════════════════════════════
        НАСТРОЙКИ. Здесь всё, что нужно менять руками.
