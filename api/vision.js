@@ -84,7 +84,7 @@ export default async function handler(req, res) {
         model,
         messages,
         max_tokens: Math.min(Number(body.max_tokens) || 1500, 8000),
-        temperature: 0.7,
+        temperature: Number.isFinite(Number(body.temperature)) ? Number(body.temperature) : 0.7,
       }),
     });
 
