@@ -828,7 +828,6 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
   }, []);
   const QPOOL = React.useMemo(()=> rotate(QUOTES, 3), [rotate]);
   const QSPOOL = React.useMemo(()=> rotate(ENVELOPE_QS, 4), [rotate]);
-  const BGPOOL = React.useMemo(()=> rotate(FEED_BG, 5), [rotate]);
   const [count, setCount] = useState(48);
   const [burst, setBurst] = useState(null); // id карточки с всплеском сердца
   const lastTap = React.useRef({});
@@ -848,34 +847,35 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
     if (!POOL.length) return null;
     if (kind==="quote"){
       const qt = QPOOL[idx % QPOOL.length];
+      // Цитата на чистом чернильном градиенте — никакой зависимости от фото
       return (
-        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", border:`1px solid ${C.line}`, position:"relative" }}>
-          <Photo t={idx%6} url={BGPOOL[idx % BGPOOL.length]} h={196} radius={0}>
-            <div style={{ position:"absolute", inset:0, background:`linear-gradient(160deg, rgba(26,26,26,0.32), rgba(26,26,26,0.62))` }}/>
-          </Photo>
-          <div style={{ position:"absolute", inset:0, padding:"18px 15px", display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
-            <span style={{ color:"#fff", fontSize:14, opacity:0.85 }}>✦</span>
-            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, lineHeight:1.35, color:"#fff", margin:"6px 0 0", textShadow:"0 1px 10px rgba(26,26,26,0.6)" }}>{qt}</p>
+        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", minHeight:172, position:"relative", background:`linear-gradient(155deg, #232323 0%, #3B342C 58%, ${ch.partner}55 130%)`, border:"1px solid rgba(26,26,26,0.2)" }}>
+          <div style={{ position:"absolute", inset:0, background:`radial-gradient(circle at 85% 0%, ${C.butter}2E, transparent 55%)` }}/>
+          <div style={{ position:"relative", padding:"20px 16px", display:"flex", flexDirection:"column", justifyContent:"flex-end", minHeight:172 }}>
+            <span style={{ color:C.butter, fontSize:15 }}>✦</span>
+            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16.5, lineHeight:1.38, color:"#FAF8F1", margin:"7px 0 0" }}>{qt}</p>
           </div>
         </div>
       );
     }
     if (kind==="q"){
       const qq = QSPOOL[idx % QSPOOL.length];
+      // Вопрос себе — на светлом фирменном градиенте главы
       return (
-        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", border:`1px solid ${ch.partner}66`, position:"relative" }}>
-          <Photo t={(idx+2)%6} url={BGPOOL[(idx+4) % BGPOOL.length]} h={182} radius={0}>
-            <div style={{ position:"absolute", inset:0, background:`linear-gradient(160deg, ${ch.partner}66, rgba(26,26,26,0.66))` }}/>
-          </Photo>
-          <div style={{ position:"absolute", inset:0, padding:"16px 15px", display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
-            <div style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(255,255,255,0.85)" }}>Вопрос себе</div>
-            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.35, color:"#fff", margin:"6px 0 0", textShadow:"0 1px 10px rgba(26,26,26,0.6)" }}>{qq}</p>
+        <div key={idx} className={"fade st"+((idx%6)+1)} style={{ breakInside:"avoid", marginBottom:10, borderRadius:16, overflow:"hidden", minHeight:160, position:"relative", background:`linear-gradient(150deg, ${C.butter} 0%, ${ch.partner}99 70%, ${ch.partner} 120%)`, border:`1px solid ${ch.partner}55` }}>
+          <div style={{ position:"absolute", inset:0, background:"radial-gradient(circle at 15% 100%, rgba(255,255,255,0.5), transparent 55%)" }}/>
+          <div style={{ position:"relative", padding:"18px 16px", display:"flex", flexDirection:"column", justifyContent:"flex-end", minHeight:160 }}>
+            <div style={{ fontFamily:head, fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"rgba(26,26,26,0.55)" }}>Вопрос себе</div>
+            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.38, color:C.ink, margin:"6px 0 0" }}>{qq}</p>
           </div>
         </div>
       );
     }
     const special = kind==="day";
-    const [imgKey, url] = POOL[(special ? 0 : idx) % POOL.length];
+    // Сколько спецкарточек (пин дня + цитаты) стояло до этой позиции —
+    // вычитаем, чтобы фотографии шли по пулу подряд, без пропусков и повторов.
+    const nSpec = flt ? 0 : (idx>1?1:0) + Math.floor((idx+4)/9) + Math.floor((idx+1)/9);
+    const [imgKey, url] = POOL[(special ? 0 : Math.max(0, idx - nSpec)) % POOL.length];
     const topic = sgFeedTopic(imgKey);
     const cap = special
       ? "Пин дня · только сегодня"
@@ -908,7 +908,6 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
           <h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:21, margin:0, color:C.ink }}>Поток</h1>
           <p style={{ fontSize:11, color:C.inkFaint, margin:0 }}>листай медленно · двойной тап сохраняет</p>
         </div>
-        <SGFleur color={ch.partner} size={38}/>
       </div>
       <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"9px 12px 4px", WebkitOverflowScrolling:"touch", scrollbarWidth:"none" }}>
         {["", ...TOPIC_NAMES].map(nm=>(
@@ -925,8 +924,8 @@ function InspoFeed({ ch, saved, toggleSave, openPin, onClose }){
           {Array.from({length: Math.min(count, POOL.length + (flt?0:3))}).map((_,i)=>card(i))}
           {count >= POOL.length && (
             <div style={{ gridColumn:"1 / -1", padding:"26px 14px 14px", textAlign:"center" }}>
-              <SGFleur color={ch.partner} size={34}/>
-              <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink, margin:"8px 0 3px" }}>На сегодня — всё</p>
+              <div style={{ width:44, height:4, borderRadius:99, margin:"0 auto", background:`linear-gradient(90deg, ${C.butter}, ${ch.partner})` }}/>
+              <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, color:C.ink, margin:"10px 0 3px" }}>На сегодня — всё</p>
               <p style={{ fontSize:12.5, color:C.inkSoft, margin:0 }}>Завтра поток соберётся заново. Медленно — это досмотреть до конца ✦</p>
             </div>
           )}
@@ -1246,7 +1245,7 @@ function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel,
   return (
     <div>
       <div style={{ padding:"4px 2px 14px" }}>
-        <div style={{ display:"flex", alignItems:"flex-end", gap:10 }}><h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:28, margin:0, color:C.ink }}>Инструменты</h1><SGFleur color={ch.partner} size={46} style={{ marginBottom:4 }}/></div>
+        <div style={{ display:"flex", alignItems:"flex-end", gap:10 }}><h1 style={{ fontFamily:serif, fontStyle:"italic", fontWeight:400, fontSize:28, margin:0, color:C.ink }}>Инструменты</h1></div>
         <p style={{ fontSize:13, color:C.inkSoft, margin:"5px 0 0", lineHeight:1.45 }}>Всё для медленной красивой жизни — в одном месте.</p>
       </div>
       <button onClick={openPin} className="sheen anim-grad" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:18, padding:"14px 16px", marginBottom:14, background:`linear-gradient(120deg, ${C.butter}, ${ch.partner} 80%)`, display:"flex", alignItems:"center", gap:12 }}>
@@ -1849,15 +1848,31 @@ function SlowGlowAppMain() {
   const capture = (e) => {
     const f = (e.target.files||[])[0]; if (!f) return;
     const id = Date.now();
-    const h = new Date().getHours();
-    const pool = h<11 ? ["Тёплое утро","Медленное утро","Свет нового дня","Утренний кадр"]
-              : h<17 ? ["Момент среди дня","Маленькая пауза","Красивый день","Кадр для себя"]
-              : h<22 ? ["Тёплый вечер","Уютный вечер","Мягкий свет вечера","Вечерний момент"]
-              :        ["Тихая ночь","Поздний кадр","Спокойствие ночи","Момент перед сном"];
-    const cap = pool[id % pool.length];
-    shrinkImage(f, 1280, 0.82)
-      .then(url=>{ setMoments(m=>[{ id, url, cap, date:"только что" }, ...m]); })
-      .catch(()=>{ setMoments(m=>[{ id, url:"", cap, date:"только что" }, ...m]); });
+    // Раньше подпись выбиралась случайно по времени суток («Уютный вечер» — что бы
+    // ни было на кадре). Теперь фото смотрит модель и называет то, что видит.
+    const fallback = "Кадр на память";
+    shrinkImage(f, 1000, 0.8)
+      .then(async url=>{
+        setMoments(m=>[{ id, url, cap:"…", date:"только что" }, ...m]);
+        try {
+          const b64 = url.split(",")[1];
+          const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify({
+            model:"claude-sonnet-4-6", max_tokens:60, temperature:0.4,
+            system:"Ты подписываешь фотографии для личного дневника красивой медленной жизни.",
+            messages:[{ role:"user", content:[
+              { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 } },
+              { type:"text", text:"Назови, что на этом фото, одной эстетичной строкой в 3-6 слов по-русски. Обязательно конкретика: предмет, место, свет или действие. ЗАПРЕЩЕНЫ пустые ярлыки «уютный вечер», «тёплое утро», «мягкий свет», «атмосферный момент». Хорошие примеры: «Латте и книга у окна», «Закат над черепичными крышами», «Босиком по утреннему песку». Верни только строку, без кавычек и точки." }
+            ]}]
+          })});
+          const j = await r.json();
+          const t = (j.content||[]).map(b=>b.text||"").join("").trim().replace(/^[«"']+|[»"'.]+$/g,"");
+          const bad = /^(уютн|т[её]пл|мягк|нежн|атмосферн)\w*\s/i.test(t);
+          setMoments(m=>m.map(x=> x.id===id ? { ...x, cap: (t && t.length<=70 && !bad) ? t : fallback } : x));
+        } catch(e){
+          setMoments(m=>m.map(x=> x.id===id ? { ...x, cap: fallback } : x));
+        }
+      })
+      .catch(()=>{ setMoments(m=>[{ id, url:"", cap: fallback, date:"только что" }, ...m]); });
     setCelebrate(true); setTimeout(()=>setCelebrate(false), 2200); setTab("journal");
   };
 
@@ -2309,8 +2324,7 @@ function BeautifulDay({ ch }) {
   const dstr = new Date().toLocaleDateString("ru-RU",{ day:"numeric", month:"long" });
   return (
     <div style={{ position:"relative", margin:"0 0 22px", borderRadius:22, overflow:"hidden", border:`1px solid ${ch.partner}`, background:`linear-gradient(165deg, ${ch.partner}26, rgba(255,255,255,0.65) 62%)` }}>
-      <div aria-hidden="true" style={{ position:"absolute", right:-36, top:-36, width:150, height:150, borderRadius:99, background:`radial-gradient(circle at 35% 35%, ${C.butter}, ${ch.partner}59 58%, transparent 74%)`, filter:"blur(2px)" }}/>
-      <div aria-hidden="true" style={{ position:"absolute", right:12, top:38, opacity:0.55 }}><SGFleur color={ch.partner} size={50}/></div>
+      <div aria-hidden="true" style={{ position:"absolute", left:0, right:0, top:0, height:4, background:`linear-gradient(90deg, ${C.butter}, ${ch.partner}, ${C.butter})` }}/>
       {burst && <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:3 }}>{Array.from({length:12}).map((_,k)=>{ const cols=[ch.partner, C.sage, C.butter, "#F2B6C6"]; return <span key={k} className="petal" style={{ left:((6+k*8)%92)+"%", background:cols[k%4], animationDelay:(k*0.15)+"s", animationDuration:(2.3+(k%5)*0.32)+"s" }}/>; })}</div>}
       <div style={{ padding:"17px 18px 4px" }}>
         <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:8 }}>
@@ -2479,7 +2493,6 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
 
       <div className="anim-grad" style={{ position:"relative", borderRadius:20, overflow:"hidden", marginBottom:22, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 65%, ${C.oat})`, boxShadow:`0 16px 36px -28px ${ch.partner}` }}>
         <div aria-hidden="true" style={{ position:"absolute", right:-28, top:-32, width:130, height:130, borderRadius:99, background:"rgba(255,255,255,0.3)" }}/>
-        <div aria-hidden="true" style={{ position:"absolute", right:12, bottom:8, opacity:0.5 }}><SGFleur color="#1A1A1A" size={50}/></div>
         <div style={{ position:"relative", padding:"18px 20px" }}>
           <Label color="rgba(26,26,26,0.5)">Кем ты становишься</Label>
           <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:20, lineHeight:1.35, color:C.ink, margin:"8px 0 0" }}>Ты создаёшь жизнь {identity}.</p>
@@ -3558,26 +3571,12 @@ function RecipeView({ data, onClose, setDetail }) {
   const CHIPS = ["яйца","авокадо","хлеб","помидоры","огурец","сыр","фета","йогурт","творог","овсянка","банан","ягоды","лимон","паста","рис","курица","тунец","нут","шпинат","мёд"];
   const score = (r) => r.key.filter(k => fridge.some(f => k.includes(f)||f.includes(k))).length;
   const matched = fridge.length ? RECIPES.map(r=>({ r, n:score(r) })).filter(x=>x.n>0).sort((a,b)=> b.n-a.n || b.r.key.length-a.r.key.length).slice(0,6) : [];
-  const aiCook = async () => {
-    if(!fridge.length || aiBusy) return; setAiBusy(true); setAiErr("");
-    try {
-      const sys = "Ты — опытный шеф-повар Slow Glow с насмотренностью в средиземноморской и домашней кухне. По списку продуктов придумай ОДИН реальный, вкусный и выполнимый рецепт, максимально используя именно то, что есть (можно добавить базовые соль, перец, масло, лук, чеснок, специи, муку). Дай аппетитное красивое название; точные количества в граммах/штуках/ложках; понятные пошаговые действия с приёмами (как и сколько готовить, на каком огне); в поле why — одно тёплое предложение с подсказкой по подаче. Рецепт должен реально получиться из этих продуктов, без экзотики. Верни ТОЛЬКО JSON без markdown: {\"v\":\"название\",\"k\":\"тип: Завтрак/Обед/Ужин/Десерт/Напиток\",\"time\":\"время\",\"serves\":\"порции\",\"why\":\"тёплое предложение с подсказкой по подаче\",\"ingredients\":[\"ингредиент — точное количество\"],\"steps\":[\"конкретный шаг с приёмом\"]}.";
-      const prompt = "В холодильнике есть: " + fridge.join(", ") + ". Придумай вкусный рецепт в основном из этого.";
-      const r = await fetch(AI_ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000, system:sys, messages:[{ role:"user", content:prompt }] }) });
-      const j = await r.json();
-      const txt = (j.content||[]).map(b=>b.text||"").join("").trim();
-      const obj = sgParseJSON(txt);   // вырезает JSON даже из ответа с преамбулой или markdown
-      if(!obj || !Array.isArray(obj.ingredients) || !Array.isArray(obj.steps)) throw new Error("bad json");
-      obj.t = 4; obj.url = RECIPES[fridge.join(",").length % RECIPES.length].url; obj.market = "";
-      setDetail({ item:obj, partner, recipe:true });
-    } catch(e){
-      // Честность: показываем близкий рецепт из подборки и говорим об этом прямо,
-      // а не выдаём его за придуманный ИИ.
-      const best = fridge.length ? RECIPES.map(r=>({r,n:score(r)})).sort((a,b)=>b.n-a.n)[0].r : pick(RECIPES,1,seedToday)[0];
-      setAiErr("Не получилось придумать рецепт из твоих продуктов — показала близкий из подборки. Попробуй ещё раз.");
-      setDetail({ item:best, partner, recipe:true });
-    }
-    setAiBusy(false);
+  // Рецепт подбирается из собственного сборника RECIPES по совпадению продуктов —
+  // без ИИ: мгновенно, бесплатно и всегда съедобно.
+  const aiCook = () => {
+    if(!fridge.length) return;
+    const best = RECIPES.map(r=>({r,n:score(r)})).sort((a,b)=> b.n-a.n || b.r.key.length-a.r.key.length)[0].r;
+    setDetail({ item:best, partner, recipe:true });
   };
   const Card = (r,i,suffix) => (
     <button key={suffix+i} onClick={()=>setDetail({ item:r, partner, recipe:true })} className="fade" style={{ width:"100%", textAlign:"left", border:"none", background:"transparent", cursor:"pointer", display:"flex", gap:14, padding:"14px 0", borderBottom:`1px solid ${C.line}` }}>
@@ -3618,7 +3617,7 @@ function RecipeView({ data, onClose, setDetail }) {
             <button key={c} onClick={()=>addItem(c)} style={{ border:`1px solid ${C.line}`, background:"rgba(255,255,255,0.6)", color:C.inkSoft, borderRadius:99, padding:"5px 10px", fontSize:13, cursor:"pointer" }}>+ {c}</button>
           ))}
         </div>
-        <button onClick={aiCook} disabled={!fridge.length||aiBusy} style={{ width:"100%", border:"none", borderRadius:14, padding:"13px", cursor:fridge.length?"pointer":"default", fontFamily:head, fontSize:12, letterSpacing:"0.08em", textTransform:"uppercase", color:fridge.length?"#fff":C.inkFaint, background:fridge.length?`radial-gradient(circle at 30% 30%, ${C.butter}, ${partner})`:"rgba(26,26,26,0.06)" }}>{aiBusy?"Придумываю рецепт…":"✦ Придумать рецепт из этого"}</button>
+        <button onClick={aiCook} disabled={!fridge.length} style={{ width:"100%", border:"none", borderRadius:14, padding:"13px", cursor:fridge.length?"pointer":"default", fontFamily:head, fontSize:12, letterSpacing:"0.08em", textTransform:"uppercase", color:fridge.length?"#fff":C.inkFaint, background:fridge.length?`linear-gradient(135deg, ${C.butter}, ${partner})`:"rgba(26,26,26,0.06)" }}>✦ Подобрать рецепт из этого</button>
         {aiErr && <p style={{ fontSize:12.5, color:"#B5826A", margin:"10px 0 0", lineHeight:1.4 }}>{aiErr}</p>}
       </div>
       {(() => { const td = pick(RECIPES, 10, seedToday); return (
@@ -4034,7 +4033,7 @@ function PinReality({ ch, dna, onClose }) {
 
       {D.read && (
         <div className="fade" style={{ marginBottom:20, borderRadius:16, padding:"14px 16px", background:"rgba(255,255,255,0.55)", border:`1px solid ${C.line}` }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><Label color={ch.partner}>Что говорят твои пины</Label><SGFleur color={ch.partner} size={40}/></div>
+          <Label color={ch.partner}>Что говорят твои пины</Label>
           <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:16, lineHeight:1.45, color:C.ink, margin:"6px 0 0" }}>{D.read}</p>
           {D.palette && D.palette.length>0 && (
             <div style={{ display:"flex", alignItems:"center", gap:0, marginTop:12, borderRadius:10, overflow:"hidden", height:26, border:`1px solid ${C.line}` }}>
@@ -5827,7 +5826,6 @@ function Paywall({ ch, feature, onClose, onSubscribe }) {
           </div>
           <div style={{ margin:"2px 0 14px", borderRadius:18, height:88, position:"relative", overflow:"hidden", background:`linear-gradient(120deg, ${C.butter}, ${ch.partner}8C 60%, ${C.oat})` }}>
             <div aria-hidden="true" style={{ position:"absolute", left:-22, top:-28, width:110, height:110, borderRadius:99, background:"rgba(255,255,255,0.32)" }}/>
-            <div aria-hidden="true" style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", opacity:0.85 }}><SGFleur color="#1A1A1A" size={56}/></div>
           </div>
           <div style={{ textAlign:"center", marginTop:-6, marginBottom:18 }}>
             <GlowOrb partner={ch.partner} size={86} style={{ margin:"0 auto 14px" }}/>
