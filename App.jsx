@@ -2085,7 +2085,7 @@ function SlowGlowAppMain() {
         )}
 
         {rubric && <RubricView data={rubricsFor(chapterId)[rubric]} onClose={()=>setRubric(null)} setDetail={setDetail} />}
-        {pinOpen && <PinReality ch={ch} dna={dna} onClose={()=>setPinOpen(false)} />}
+        {pinOpen && <PinReality ch={ch} dna={dna} premium={premium} openPlus={()=>setPaywall("plus")} onClose={()=>setPinOpen(false)} />}
         {feed && <InspoFeed ch={ch} saved={saved} toggleSave={toggleSave} openPin={()=>{ setFeed(false); setPinOpen(true); }} onClose={()=>setFeed(false)} />}
         {addPlace && <AddPlace ch={ch} city={profile.city} editing={addPlace===true?null:addPlace} onClose={()=>setAddPlace(false)} onSave={(p)=>{ setUserPlaces(prev=> prev.some(x=>x.id===p.id) ? prev.map(x=>x.id===p.id?p:x) : [p,...prev]); setAddPlace(false); }} />}
         {mind && <MindView ch={ch} onClose={()=>setMind(false)} toggleSave={toggleSave} isSaved={isSaved} />}
@@ -2315,6 +2315,24 @@ function Onboarding({ profile, setProfile, onDone }) {
 }
 
 // ── SCREENS ───────────────────────────────────────────────────────
+function PathStage({ title, note, items, ch, skey, plain }){
+  if (!items || !items.length) return null;
+  return (
+    <div style={{ marginTop:15 }}>
+      <p style={{ fontFamily:head, fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:ch.partner, margin:"0 0 2px", fontWeight:600 }}>{title}</p>
+      {note && <p style={{ fontSize:11.5, color:C.inkFaint, margin:"0 0 7px" }}>{note}</p>}
+      {plain
+        ? items.map((t,i)=>(
+            <div key={i} className={"fade st"+((i%6)+1)} style={{ display:"flex", gap:10, alignItems:"flex-start", padding:"7px 2px" }}>
+              <span style={{ flexShrink:0, width:6, height:6, borderRadius:99, marginTop:8, background:ch.partner }}/>
+              <span style={{ flex:1, fontSize:14, lineHeight:1.42, color:C.ink }}>{t}</span>
+            </div>
+          ))
+        : items.map((t,i)=> <ChecklistRow key={i} text={t} ch={ch} storeKey={skey} />)}
+    </div>
+  );
+}
+
 function ChecklistRow({ text, ch, storeKey }){
   const [on, setOn] = React.useState(()=> !!(sgStore.get(storeKey, {})[text]));
   const flip = ()=>{ const st = sgStore.get(storeKey, {}); st[text] = !st[text]; sgStore.set(storeKey, st); setOn(!!st[text]); };
@@ -2455,7 +2473,17 @@ function Home_({ ch, profile, dna, earlyAccess, setRubric, setPin, setDetail, pr
           {ch.name.split(" ")[0]}<br/>{ch.name.split(" ")[1]}
         </h1>
       </div>
-      <p style={{ fontSize:15, lineHeight:1.6, color:C.inkSoft, margin:"6px 0 28px" }}>Доброе утро{profile.name?`, ${profile.name}`:""}. Несколько способов сегодня прожить твою эстетику.</p>
+      {(()=>{
+        const dl = sgStore.get("sg_dream_last", null);
+        if (dl && dl.twin) {
+          return (
+            <p style={{ fontSize:15, lineHeight:1.6, color:C.inkSoft, margin:"6px 0 24px" }}>
+              Доброе утро{profile.name?`, ${profile.name}`:""}. Сегодня у тебя — <span style={{ fontFamily:serif, fontStyle:"italic", color:C.ink, fontSize:16 }}>{dl.twin.toLowerCase()}</span>. Вот как прожить её в своём ритме.
+            </p>
+          );
+        }
+        return <p style={{ fontSize:15, lineHeight:1.6, color:C.inkSoft, margin:"6px 0 28px" }}>Доброе утро{profile.name?`, ${profile.name}`:""}. Несколько способов сегодня прожить твою эстетику.</p>;
+      })()}
       </div>
       <EditorColumn partner={ch.partner}/>
       {(()=>{ const fresh = !sgStore.get("sg_dream_last", null); return (
@@ -3978,7 +4006,7 @@ function ShareDream({ ch, D }){
   );
 }
 
-function PinReality({ ch, dna, onClose }) {
+function PinReality({ ch, dna, premium, openPlus, onClose }) {
   const pins = pick(PINS_POOL, 4, 4);
   const [imgs, setImgs] = useState([]);
   const [ai, setAi] = useState(()=> sgStore.get("sg_dream_full", null)); // прошлый разбор живёт между сессиями
@@ -4028,7 +4056,7 @@ function PinReality({ ch, dna, onClose }) {
   const analyze = async () => {
     if (!imgs.length || busy) return; setBusy(true); setErr(null);
     const sys = "Ты — Slow Glow: тёплый голос о медленной красивой жизни и предельно внимательный визуальный аналитик. ЖЕЛЕЗНОЕ ПРАВИЛО №1: ты описываешь и анализируешь ТОЛЬКО то, что реально изображено на присланных фото. Сначала рассматриваешь каждый кадр по отдельности и честно фиксируешь его буквальное содержимое: место, предметы, людей, действие, свет, цвета. Ты НИКОГДА не додумываешь типовые «эстетичные» детали — свечи, книги, цветы, кофе, лён, дерево — если их нет на фото. Если на фото спорт (теннис, корт, ракетки), путешествия, город, еда, животные или что-то неожиданное — весь разбор строится именно вокруг этого, а не вокруг абстрактной «медленной жизни». По фото-эстетике ты видишь не «что не так», а кто эта женщина и к чему она тянется — и даёшь ПРЕДМЕТНЫЙ, конкретный разбор: точные действия, реальные вещи и ритуалы, без воды и абстракций. Покупки советуешь только для дома и интерьера; одежду покупать не советуешь никогда — только собирать образы из её гардероба. Никогда не называешь бренды, марки и магазины — вещи описываешь по типу, цвету и материалу; на актуальные тренды ссылаться можно, но без имён брендов. Пиши во втором лице, тепло и лично, как письмо подруге, которая давно её поняла. Никогда не оцениваешь и не говоришь «стань лучше»; говоришь «ты уже ближе, чем кажется». Без токсичной продуктивности и без слова «должна».";
-    const task = 'Это мои сохранённые картинки (пины) желаемой эстетики жизни, каждая подписана номером. ШАГ 1 — рассмотри КАЖДОЕ фото по отдельности и для каждого честно зафиксируй, что на нём буквально изображено (место, предметы, люди, действие, цвета). ШАГ 2 — построй разбор СТРОГО на этих наблюдениях: каждый вывод должен опираться на конкретные фото, ничего не выдумывай. Если фото разнородные (например, спорт + интерьер + путешествия) — отрази ВСЕ темы, не сводя всё к одной. Верни ТОЛЬКО валидный JSON без markdown, по-русски: {"seen":[по одной строке на КАЖДОЕ фото в исходном порядке, формат «Фото N: …», 10-16 слов на кадр: место, 2-3 КОНКРЕТНЫХ предмета или объекта, действие, свет и цвета. ЗАПРЕЩЕНО отделываться настроенческими ярлыками без предмета — «тёплый вечер», «мягкий свет», «уютная атмосфера», «эстетичное фото» сами по себе не являются описанием; такие слова допустимы только рядом с конкретикой. ПЛОХО: «Фото 2: мягкий тёплый вечер». ХОРОШО: «Фото 2: терраса над морем на закате, плетёные кресла, бокал с лимонадом, розово-золотой свет»],"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни минимум три детали ПРЯМО с картинок. Последнее предложение — одно НЕОЧЕВИДНОЕ наблюдение-связка между несколькими фото, которое она сама о себе не формулировала (например: «ты сохраняешь движение, но всегда на воздухе и никогда с секундомером — тебе важна свобода, а не результат»). Пересказ фото наблюдением не считается","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника, отражающее именно ЕЁ фото (если на фото спорт — двойник спортивный, если море — морской), максимум 3-4 слова. Оно ОБЯЗАНО опираться на конкретику кадров: место, эпоху, занятие или деталь. Хорошие примеры: «Уимблдонское утро», «Дорога к тихой бухте», «Парижское утро 70-х», «Библиотека у моря». ЗАПРЕЩЕНЫ безликие сочетания из настроения и времени суток: «Тёплый вечер», «Мягкое утро», «Уютный вечер», «Нежное лето» — это не имена, а заглушки","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[до 6 конкретных повторяющихся образов, объектов или цветов; КАЖДЫЙ обязан реально присутствовать хотя бы на одном фото из seen — не добавляй ни одного, которого нет на кадрах; если фото мало, верни меньше пунктов],"seeking":[5 чувств или ценностей за этими картинками],"mirror":"2-3 предложения-зеркала: что эта папка говорит о её СЕЙЧАС — чего в её буднях, судя по тому, что она сохраняет, ей хочется больше, и что именно эта эстетика ей даёт (энергию, тишину, ощущение праздника). Мягко и бережно, без диагнозов и слова «не хватает» в лоб; глубоко, а не пересказом фото","actions":[8 ТОЧНЫХ конкретных действий, выведенных ИЗ ЭТИХ фото — каждое начинается с глагола и содержит деталь исполнения: где, когда или сколько минут, что понадобится. ЗАПРЕЩЕНЫ тавтологии вида «на фото бег — иди бегать»: каждое действие обязано добавлять НОВОЕ измерение, которого нет на кадре, — конкретное место или время, ощущение, ритуал вокруг, социальный контекст или деталь красоты (пример: не «займись бегом», а «пробеги в субботу свой обычный маршрут в обратную сторону — и заметь, сколько нового увидишь»); ничего не связанного с фото],"identity":{"who":"3-4 предложения — какая это личность по её фото: её характер, ритм, отношение к себе; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, подобранных под темы ЕЁ фото, каждая с указанием времени],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"outfits":[3 готовых образа под её эстетику С ФОТО, собранных из базовых вещей её вероятного гардероба — каждый одним предложением: типы вещей, цвета, материалы; БЕЗ единого названия бренда],"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эстетику её фото (если на фото спорт — например, красивое хранение инвентаря, корзина для формы); каждая с материалом или цветом; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов под темы её фото, каждый одной строкой в формате «Название — суть»],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни, судя по фото],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня, связанный с тем, что на фото","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках РЕАЛЬНО видно что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути; если совпадений нет — строго null, не притягивай"') : "null")+'}. САМОПРОВЕРКА перед ответом: пройдись по каждому пункту patterns и read — если чего-то нет в seen, убери или замени. Пиши предметно. Тон тёплый и личный, во втором лице. Без оценок, без слова «должна». Никогда не советуй покупать одежду, обувь или косметику. Никогда не называй бренды. Верни строго один JSON-объект.';
+    const task = 'Это мои сохранённые картинки (пины) желаемой эстетики жизни, каждая подписана номером. ШАГ 1 — рассмотри КАЖДОЕ фото по отдельности и для каждого честно зафиксируй, что на нём буквально изображено (место, предметы, люди, действие, цвета). ШАГ 2 — построй разбор СТРОГО на этих наблюдениях: каждый вывод должен опираться на конкретные фото, ничего не выдумывай. Если фото разнородные (например, спорт + интерьер + путешествия) — отрази ВСЕ темы, не сводя всё к одной. Верни ТОЛЬКО валидный JSON без markdown, по-русски: {"seen":[по одной строке на КАЖДОЕ фото в исходном порядке, формат «Фото N: …», 10-16 слов на кадр: место, 2-3 КОНКРЕТНЫХ предмета или объекта, действие, свет и цвета. ЗАПРЕЩЕНО отделываться настроенческими ярлыками без предмета — «тёплый вечер», «мягкий свет», «уютная атмосфера», «эстетичное фото» сами по себе не являются описанием; такие слова допустимы только рядом с конкретикой. ПЛОХО: «Фото 2: мягкий тёплый вечер». ХОРОШО: «Фото 2: терраса над морем на закате, плетёные кресла, бокал с лимонадом, розово-золотой свет»],"read":"3-4 предложения: кто эта женщина по её пинам и какую именно жизнь она себе собирает — конкретно, узнаваемо и тепло, во втором лице; упомяни минимум три детали ПРЯМО с картинок. Последнее предложение — одно НЕОЧЕВИДНОЕ наблюдение-связка между несколькими фото, которое она сама о себе не формулировала (например: «ты сохраняешь движение, но всегда на воздухе и никогда с секундомером — тебе важна свобода, а не результат»). Пересказ фото наблюдением не считается","palette":[5 цветов её эстетики в HEX, от светлого к насыщенному, взятые прямо с картинок],"twin":{"name":"короткое образное название её эстетического двойника, отражающее именно ЕЁ фото (если на фото спорт — двойник спортивный, если море — морской), максимум 3-4 слова. Оно ОБЯЗАНО опираться на конкретику кадров: место, эпоху, занятие или деталь. Хорошие примеры: «Уимблдонское утро», «Дорога к тихой бухте», «Парижское утро 70-х», «Библиотека у моря». ЗАПРЕЩЕНЫ безликие сочетания из настроения и времени суток: «Тёплый вечер», «Мягкое утро», «Уютный вечер», «Нежное лето» — это не имена, а заглушки","essence":"1-2 тёплых предложения во втором лице, почему именно это её двойник — по настроению её пинов","traits":[3 коротких определяющих черты этого образа, каждая 1-2 слова]},"patterns":[до 6 конкретных повторяющихся образов, объектов или цветов; КАЖДЫЙ обязан реально присутствовать хотя бы на одном фото из seen — не добавляй ни одного, которого нет на кадрах; если фото мало, верни меньше пунктов],"seeking":[5 чувств или ценностей за этими картинками],"mirror":"2-3 предложения-зеркала: что эта папка говорит о её СЕЙЧАС — чего в её буднях, судя по тому, что она сохраняет, ей хочется больше, и что именно эта эстетика ей даёт (энергию, тишину, ощущение праздника). Мягко и бережно, без диагнозов и слова «не хватает» в лоб; глубоко, а не пересказом фото","actions":[8 ТОЧНЫХ конкретных действий, выведенных ИЗ ЭТИХ фото — каждое начинается с глагола и содержит деталь исполнения: где, когда или сколько минут, что понадобится. ЗАПРЕЩЕНЫ тавтологии вида «на фото бег — иди бегать»: каждое действие обязано добавлять НОВОЕ измерение, которого нет на кадре, — конкретное место или время, ощущение, ритуал вокруг, социальный контекст или деталь красоты (пример: не «займись бегом», а «пробеги в субботу свой обычный маршрут в обратную сторону — и заметь, сколько нового увидишь»); ничего не связанного с фото],"identity":{"who":"3-4 предложения — какая это личность по её фото: её характер, ритм, отношение к себе; тепло и конкретно, во втором лице","habits":[6 ежедневных привычек по 10–15 минут, подобранных под темы ЕЁ фото, каждая с указанием времени],"mindset":[4 короткие установки мышления этой женщины, каждая одной фразой]},"outfits":[3 готовых образа под её эстетику С ФОТО, собранных из базовых вещей её вероятного гардероба — каждый одним предложением: типы вещей, цвета, материалы; БЕЗ единого названия бренда],"shopping":[8 конкретных вещей ТОЛЬКО ДЛЯ ДОМА И ИНТЕРЬЕРА под эстетику её фото (если на фото спорт — например, красивое хранение инвентаря, корзина для формы); каждая с материалом или цветом; НИКОГДА не одежда, не обувь и не косметика],"rituals":[5 повторяемых ритуалов под темы её фото, каждый одной строкой в формате «Название — суть»],"have":[5 вещей, которые у меня скорее всего уже есть для этой жизни, судя по фото],"missing":[4 мягкие точки роста без давления],"today":"1 маленький конкретный шаг на сегодня, связанный с тем, что на фото","week":[3 конкретных внедрения на неделю],"month":[5 конкретных изменений на месяц],"echo":'+(dna&&dna.themes&&dna.themes.length ? ('"если на этих новых картинках РЕАЛЬНО видно что-то из тем её самого первого мудборда мечты ('+dna.themes.join(", ")+') — напиши тёплое личное напоминание в 1-2 предложения, что она уже мечтала об этом в самом начале пути; если совпадений нет — строго null, не притягивай"') : "null")+'}. САМОПРОВЕРКА перед ответом: пройдись по каждому пункту patterns и read — если чего-то нет в seen, убери или замени. Пиши предметно. Тон тёплый и личный, во втором лице. Без оценок, без слова «должна». Вещи можно называть по МАТЕРИАЛУ и образу (льняная рубашка, керамическая чашка) для полей path.week и path.around, но НИКОГДА не называй бренды, магазины, цены и не давай ссылок. Косметику упоминай только как жест (нюдовый маникюр), а не как товар. Верни строго один JSON-объект.';
     let ok = false;
     let reason = "";   // ← настоящая причина отказа, чтобы её было видно
     let qNote = "";    // ← критика качества для повторной попытки
@@ -4067,11 +4095,14 @@ function PinReality({ ch, dna, onClose }) {
           if (sh && attempt===0) { qNote = sh; reason = "поверхностный ответ: " + sh; continue; }  // одна повторная попытка с критикой
           if (obj && (Array.isArray(obj.patterns) || obj.read)) {
             const _a=(x)=>Array.isArray(x)?x:[];
-            const clean={ ...obj, mirror: typeof obj.mirror==="string" ? obj.mirror : "", seen:_a(obj.seen).map(s=>String(s)).slice(0,8), patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month), outfits:_a(obj.outfits), palette:_a(obj.palette).filter(x=>/^#[0-9a-fA-F]{3,8}$/.test(String(x))).slice(0,6) };
+            const P = obj.path && typeof obj.path==="object" ? {
+              today:_a(obj.path.today), week:_a(obj.path.week), ritual:_a(obj.path.ritual), around:_a(obj.path.around)
+            } : null;
+            const clean={ ...obj, path:P, mirror: typeof obj.mirror==="string" ? obj.mirror : "", seen:_a(obj.seen).map(s=>String(s)).slice(0,8), patterns:_a(obj.patterns), seeking:_a(obj.seeking), actions:_a(obj.actions), shopping:_a(obj.shopping), rituals:_a(obj.rituals), have:_a(obj.have), missing:_a(obj.missing), week:_a(obj.week), month:_a(obj.month), outfits:_a(obj.outfits), palette:_a(obj.palette).filter(x=>/^#[0-9a-fA-F]{3,8}$/.test(String(x))).slice(0,6) };
             if(obj.identity && typeof obj.identity==="object"){ clean.identity={ who:String(obj.identity.who||""), habits:_a(obj.identity.habits), mindset:_a(obj.identity.mindset) }; } else { delete clean.identity; }
             if(obj.twin && typeof obj.twin==="object" && obj.twin.name){ clean.twin={ name:String(obj.twin.name).slice(0,42), essence:String(obj.twin.essence||""), traits:_a(obj.twin.traits).slice(0,3) }; } else { delete clean.twin; }
             setAi(clean);
-            sgStore.set("sg_dream_last", { t:Date.now(), seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) });
+            sgStore.set("sg_dream_last", { t:Date.now(), twin: clean.twin && clean.twin.name ? clean.twin.name : "", palette: clean.palette.slice(0,5), mirror: clean.mirror||"", seeking:clean.seeking.slice(0,3), actions:clean.actions.slice(0,8), rituals:clean.rituals.slice(0,5) });
             try{ clean._at = Date.now(); sgStore.set("sg_dream_full", clean); sgStore.set(todayKey(), anUsed()+1); setQuotaLeft(Math.max(0, AN_LIMIT - anUsed())); }catch(e){}
             try{ const h=sgStore.get("sg_dream_history", []); h.unshift({ t:Date.now(), seeking:clean.seeking.slice(0,3), patterns:clean.patterns.slice(0,6) }); sgStore.set("sg_dream_history", h.slice(0,12)); }catch(e){}
             sgTrack("analyzer_done", { imgs: list.length });
@@ -4209,9 +4240,43 @@ function PinReality({ ch, dna, onClose }) {
         );})}</div>
       </>)}
 
-      {D.actions && D.actions.length>0 && (()=>{
+      {D.path && (D.path.today.length || D.path.week.length || D.path.ritual.length || D.path.around.length) ? (
+        <div className="fade" style={{ position:"relative", borderRadius:20, overflow:"hidden", marginBottom:20, border:`1px solid ${ch.partner}55`, background:`linear-gradient(155deg, ${C.butter}44 0%, #FFFDF6 55%, ${ch.partner}22 130%)` }}>
+          <div aria-hidden="true" style={{ position:"absolute", left:0, right:0, top:0, height:4, background:`linear-gradient(90deg, ${C.butter}, ${ch.partner}, ${C.butter})` }}/>
+          <div style={{ padding:"18px 17px 16px" }}>
+            <Label color={ch.partner}>Из сохранений — в жизнь</Label>
+            <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.45, color:C.ink, margin:"7px 0 4px" }}>Стать этим человеком — не большой скачок, а мягкие шаги. Отмечай сделанное, спешить некуда.</p>
+
+            <PathStage title="Сегодня" note="крошечные жесты, ничего не нужно покупать" items={D.path.today} ch={ch} skey={"sg_path_today_"+sgToday()} />
+
+            {premium ? (<>
+              <PathStage title="На этой неделе" note="маленький выход или первая вещь" items={D.path.week} ch={ch} skey={"sg_path_week"} />
+              <PathStage title="Твой ритм" note="что становится образом жизни" items={D.path.ritual} ch={ch} skey={"sg_path_ritual"} plain />
+              {D.path.around.length>0 && (
+                <div style={{ marginTop:16 }}>
+                  <p style={{ fontFamily:head, fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:ch.partner, margin:"0 0 4px", fontWeight:600 }}>Собрать вокруг себя</p>
+                  <p style={{ fontSize:11.5, color:C.inkFaint, margin:"0 0 9px" }}>Вещи-настроение твоего мира. Не список покупок — образ пространства. Отметь, что уже есть.</p>
+                  {D.path.around.map((a,i)=>(
+                    <ChecklistRow key={i} text={a} ch={ch} storeKey="sg_path_around" />
+                  ))}
+                </div>
+              )}
+            </>) : (
+              <button onClick={openPlus} className="tapPop" style={{ width:"100%", marginTop:16, textAlign:"left", cursor:"pointer", border:`1px solid ${ch.partner}66`, borderRadius:16, overflow:"hidden", background:`linear-gradient(150deg, #FFFDF6, ${ch.partner}1F)`, padding:"15px 16px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:5 }}>
+                  <span style={{ fontSize:12 }}>✦</span>
+                  <span style={{ fontFamily:head, fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:ch.partner, fontWeight:600 }}>Весь путь — в Slow Glow Plus</span>
+                </div>
+                <p style={{ fontFamily:serif, fontStyle:"italic", fontSize:15.5, lineHeight:1.45, color:C.ink, margin:"0 0 8px" }}>Шаги на сегодня у тебя есть — и они бесплатны навсегда. А неделя, твой ритм и «собрать вокруг себя» ждут в Plus: полная дорога от сохранений к жизни, с отметками пути.</p>
+                <span style={{ fontFamily:head, fontSize:12.5, color:ch.partner, fontWeight:600 }}>Открыть весь путь →</span>
+              </button>
+            )}
+
+            <p style={{ fontSize:11, color:C.inkFaint, margin:"14px 0 0", lineHeight:1.4 }}>Slow Glow помогает не сохранять вдохновение, а превращать его в повседневность ✦</p>
+          </div>
+        </div>
+      ) : (D.actions && D.actions.length>0 && (()=>{
         const five = D.actions.slice(0,5);
-        const ck = sgStore.get("sg_dream_ck_"+sgToday(), {});
         return (
           <div className="fade" style={{ position:"relative", borderRadius:20, overflow:"hidden", marginBottom:20, border:`1px solid ${ch.partner}55`, background:`linear-gradient(155deg, ${C.butter}44 0%, #FFFDF6 55%, ${ch.partner}22 130%)` }}>
             <div aria-hidden="true" style={{ position:"absolute", left:0, right:0, top:0, height:4, background:`linear-gradient(90deg, ${C.butter}, ${ch.partner}, ${C.butter})` }}/>
@@ -4225,7 +4290,7 @@ function PinReality({ ch, dna, onClose }) {
             </div>
           </div>
         );
-      })()}
+      })())}
 
       {D.twin && D.twin.name && (
         <button onClick={()=>shareDreamCard(ch, D)} className="tapPop" style={{ width:"100%", height:48, borderRadius:99, border:`1px solid ${ch.partner}`, background:"transparent", cursor:"pointer", color:C.ink, fontFamily:head, fontSize:13.5, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:20 }}>
