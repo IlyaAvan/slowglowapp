@@ -1247,8 +1247,8 @@ function Tools_({ ch, premium, onPlaces, onCollections, openStylist, openTravel,
       <button onClick={openPin} className="sheen anim-grad" style={{ width:"100%", textAlign:"left", border:`1px solid ${C.line}`, cursor:"pointer", borderRadius:18, padding:"14px 16px", marginBottom:14, background:`linear-gradient(120deg, ${C.butter}, ${ch.partner} 80%)`, display:"flex", alignItems:"center", gap:12 }}>
         <GlowOrb partner={ch.partner} size={40}/>
         <div style={{ flex:1 }}>
-          <Label color="rgba(26,26,26,0.55)">Анализатор пинов</Label>
-          <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:18, color:C.ink, marginTop:2 }}>Анализатор пинов</div>
+          <Label color="rgba(26,26,26,0.55)">Разобрать мой мир</Label>
+          <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:18, color:C.ink, marginTop:2 }}>Разобрать мой мир</div>
         </div>
         <ArrowRight size={18} strokeWidth={1.8} color="#1A1A1A"/>
       </button>
@@ -1531,7 +1531,7 @@ function IntroTour({ partner, onDone }){
   const slides = [
     { kicker:"Шаг 1 · Сегодня", title:"Твой день начинается здесь", body:"Место дня, ритуалы, колонка редактора и твой спокойный путь к жизни мечты — всё на вкладке «Сегодня»." },
     { kicker:"Шаг 2 · Досуг и карта", title:"Куда пойти под твою эстетику", body:"Карта красивых мест рядом, спорт и языки, коллекции-сценарии на вечер — на вкладке «Досуг»." },
-    { kicker:"Шаг 3 · Твоя эстетика", title:"Не понимаешь, что тебя цепляет?", body:"В разделе «Я» открой Анализатор пинов: загрузи любимые сохранения — и ИИ соберёт твою эстетику и доску мечты. Возвращайся сюда, когда меняется настроение." },
+    { kicker:"Шаг 3 · Твоя эстетика", title:"Не понимаешь, что тебя цепляет?", body:"В разделе «Я» открой «Разобрать мой мир»: загрузи любимые сохранения — и Slow Glow соберёт твою эстетику и доску мечты. Возвращайся сюда, когда меняется настроение." },
   ];
   const last = i === slides.length-1;
   const s = slides[i];
@@ -3038,15 +3038,15 @@ function Me_({ ch, chapterId, setChapterId, setPin, setWorld, premium, earlyAcce
           </button>
         ))}
       </div>
-      <div style={{ margin:"2px 0 10px" }}><Label color={C.inkFaint}>ИИ Slow Glow</Label></div>
+      <div style={{ margin:"2px 0 10px" }}><Label color={C.inkFaint}>Slow Glow</Label></div>
       <button onClick={()=>setPin(true)} className="pop" style={{ position:"relative", width:"100%", textAlign:"left", border:"none", cursor:"pointer", borderRadius:20, overflow:"hidden", padding:"18px 20px", marginBottom:22, background:`linear-gradient(125deg, ${C.butter}, ${ch.partner} 72%, ${C.oat})`, boxShadow:`0 18px 38px -24px ${ch.partner}` }}>
         <div style={{ position:"absolute", right:-14, top:-14, width:88, height:88, borderRadius:99, background:"rgba(255,255,255,0.22)" }}/>
         <div style={{ position:"relative", display:"flex", alignItems:"center", gap:13 }}>
           <GlowOrb partner={ch.partner} size={44}/>
           <div style={{ flex:1 }}>
-            <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:"rgba(26,26,26,0.6)", fontWeight:600, marginBottom:3 }}>Анализатор пинов</div>
+            <div style={{ fontFamily:head, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:"rgba(26,26,26,0.6)", fontWeight:600, marginBottom:3 }}>Разобрать мой мир</div>
             <div style={{ fontFamily:serif, fontStyle:"italic", fontSize:19, color:C.ink, lineHeight:1.15 }}>Не понимаешь, что тебя цепляет?</div>
-            <p style={{ fontSize:12.5, lineHeight:1.42, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>Загрузи любимые сохранения — ИИ соберёт твою эстетику и доску мечты заново. Возвращайся, когда меняется настроение.</p>
+            <p style={{ fontSize:12.5, lineHeight:1.42, color:"rgba(26,26,26,0.72)", margin:"5px 0 0" }}>Загрузи любимые сохранения — Slow Glow соберёт твою эстетику и доску мечты заново. Возвращайся, когда меняется настроение.</p>
           </div>
         </div>
       </button>
@@ -3119,7 +3119,7 @@ function PrivacyBlock({ ch }){
           <H>Что хранится и где</H>
           <P>Всё, что ты вводишь и отмечаешь — имя, город, настройки, сохранённые идеи, дневник, галочки дня, — живёт только в памяти твоего браузера или телефона (localStorage). У приложения нет базы пользователей, серверных аккаунтов и паролей. Удалишь приложение или очистишь данные сайта — всё исчезнет безвозвратно, в том числе и для меня: я этих данных не вижу.</P>
           <H>Что происходит с фотографиями</H>
-          <P>Когда ты запускаешь разбор сохранений или добавляешь фото в дневник, изображения отправляются через мой сервер модели искусственного интеллекта для анализа (запрос идёт через сервис-агрегатор GenAPI к модели OpenAI). Фотографии передаются только в момент анализа, не сохраняются на моём сервере и не используются для обучения моделей. Результат разбора хранится, как и всё остальное, только на твоём устройстве.</P>
+          <P>Когда ты запускаешь разбор сохранений или добавляешь фото в дневник, изображения отправляются через мой сервер AI-модели для анализа (технически — через сервис-агрегатор GenAPI к модели OpenAI). Фотографии передаются только в момент анализа, не сохраняются на моём сервере и не используются для обучения моделей. Результат разбора хранится, как и всё остальное, только на твоём устройстве.</P>
           <H>Статистика</H>
           <P>Приложение использует Яндекс.Метрику — она считает обезличенные события: сколько людей открыло приложение, какие разделы используются. Метрика не видит твоих фотографий, текстов и имени.</P>
           <H>Чего здесь нет</H>
@@ -3920,7 +3920,7 @@ async function shareDreamCard(ch, D){
     x.fillStyle="rgba(36,31,26,0.75)"; x.font="italic 400 38px 'Instrument Serif'";
     x.fillText("замечать, а не успевать", M, byLine);
     x.fillStyle=INK; x.font="500 34px Satoshi"; x.textAlign="right";
-    x.fillText("slow glow ✦", W-M, byLine); x.textAlign="left";
+    x.fillText("slow-glow.ru", W-M, byLine); x.textAlign="left";
 
     const b = await new Promise(r=>cv.toBlob(r,"image/png",0.95));
     const f = new File([b],"slow-glow-разбор.png",{type:"image/png"});
