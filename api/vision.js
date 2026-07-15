@@ -20,11 +20,51 @@
 
 export const maxDuration = 60;
 
+/* ── ЗАЩИТА ПРОКСИ ─────────────────────────────────────────────────
+   Прокси открыт в интернет, поэтому защищаем три вещи:
+   1) чужие сайты не могут дёргать его от своего имени (origin-замок);
+   2) общий поток запросов ограничен, чтобы всплеск не выжег баланс;
+   3) размер тела ограничен, чтобы не слали гигантские картинки.
+   Память живёт в пределах тёплого инстанса — этого достаточно как
+   недорогая подушка; строгий лимит появится вместе с аккаунтами. */
+
+// Кто имеет право обращаться к прокси. Пустой ALLOW = разрешить свой же домен.
+const ALLOWED_HOSTS = [
+  "slow-glow.ru", "www.slow-glow.ru",
+  "slowglowapp-mi5v.vercel.app",
+  "localhost", "127.0.0.1",
+];
+function originAllowed(req) {
+  const o = req.headers.origin || req.headers.referer || "";
+  if (!o) return true; // прямые серверные вызовы без Origin (например, тесты) не блокируем жёстко
+  try {
+    const h = new URL(o).hostname;
+    return ALLOWED_HOSTS.some((a) => h === a || h.endsWith("." + a) || h.endsWith(".vercel.app"));
+  } catch { return false; }
+}
+
+// Общий потолок: не больше N запросов в минуту со всех пользователей вместе.
+const RATE_MAX = 40;         // запросов в минуту суммарно
+const RATE_WINDOW = 60_000;  // окно 1 минута
+let hits = [];
+function rateOk() {
+  const now = Date.now();
+  hits = hits.filter((t) => now - t < RATE_WINDOW);
+  if (hits.length >= RATE_MAX) return false;
+  hits.push(now);
+  return true;
+}
+
 async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
   if (typeof req.body === "string") return JSON.parse(req.body);
   const chunks = [];
-  for await (const c of req) chunks.push(c);
+  let total = 0;
+  for await (const c of req) {
+    total += c.length;
+    if (total > 8 * 1024 * 1024) throw new Error("тело запроса слишком большое"); // 8 МБ потолок
+    chunks.push(c);
+  }
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
@@ -49,6 +89,15 @@ function toOpenAIParts(content) {
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Только POST" });
+
+  // Щит 1: только со своих доменов
+  if (!originAllowed(req)) {
+    return res.status(403).json({ error: "Доступ разрешён только из приложения Slow Glow." });
+  }
+  // Щит 2: общий потолок частоты — защита баланса от всплеска
+  if (!rateOk()) {
+    return res.status(429).json({ error: "Слишком много запросов сейчас. Подожди минуту и попробуй снова." });
+  }
 
   const key = process.env.VISION_API_KEY;
   const base = (process.env.VISION_BASE_URL || "").replace(/\/+$/, "");
